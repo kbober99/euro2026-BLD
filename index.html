@@ -274,7 +274,10 @@ async function boot() {
   try {
     const r = await fetch('data.json');
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    const d = await r.json();
+    const raw = await r.text();
+    // Replace bare NaN (invalid JSON, produced by pandas) with null
+    const sanitized = raw.replace(/:\s*NaN\b/g, ': null').replace(/,\s*NaN\b/g, ', null').replace(/\[\s*NaN\b/g, '[null');
+    const d = JSON.parse(sanitized);
     DATA  = d.chances || [];
     TIMES = d.times   || {};
     N_SIMS= d.n_sims  || 0;
