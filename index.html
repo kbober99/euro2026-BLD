@@ -472,15 +472,35 @@ function tblExport(){
 // ─── PROFILES ─────────────────────────────────────────
 function buildChips(){
   const top20=sorted().slice(0,20);
-  document.getElementById('chips').innerHTML=top20.map(r=>`
+  const wrap=document.getElementById('chips');
+  wrap.innerHTML=top20.map(r=>`
     <div class="chip" data-name="${r.Name}" onclick="selectPlayer(this.dataset.name)">${r.Name}</div>`).join('');
 }
 
 function chipFilter(){
-  const q=document.getElementById('chip-search').value.toLowerCase();
-  document.querySelectorAll('.chip').forEach(c=>{
-    c.style.display=c.dataset.name.toLowerCase().includes(q)?'':'none';
+  const q=document.getElementById('chip-search').value.toLowerCase().trim();
+  const wrap=document.getElementById('chips');
+  // Reset — show only top20 chips, hide all
+  wrap.querySelectorAll('.chip').forEach(c=>{
+    c.style.display=c.dataset.name.toLowerCase().includes(q)||q===''?'':'none';
   });
+  // If query doesn't match any top20 chip, search all DATA and show extra chips
+  if(q!==''){
+    const top20names=new Set(sorted().slice(0,20).map(r=>r.Name));
+    const extra=DATA.filter(r=>r.Name.toLowerCase().includes(q)&&!top20names.has(r.Name));
+    // Remove previous extra chips
+    wrap.querySelectorAll('.chip.extra').forEach(c=>c.remove());
+    extra.forEach(r=>{
+      const div=document.createElement('div');
+      div.className='chip extra';
+      div.dataset.name=r.Name;
+      div.textContent=r.Name;
+      div.onclick=()=>selectPlayer(r.Name);
+      wrap.appendChild(div);
+    });
+  } else {
+    wrap.querySelectorAll('.chip.extra').forEach(c=>c.remove());
+  }
 }
 
 function selectPlayer(name){
