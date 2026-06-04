@@ -348,35 +348,10 @@ async function boot(){
 // ─── HELPERS ──────────────────────────────────────────
 const pct=v=>(v==null||isNaN(v))?'—':(v*100).toFixed(1)+'%';
 // Country -> ISO2 -> flag image
-const COUNTRY_ISO={
-  'Polska':'pl','Niemcy':'de','Francja':'fr','Wielka Brytania':'gb',
-  'Anglia':'gb','Hiszpania':'es','Włochy':'it','Holandia':'nl',
-  'Belgia':'be','Szwecja':'se','Norwegia':'no','Dania':'dk',
-  'Finlandia':'fi','Austria':'at','Szwajcaria':'ch','Czechy':'cz',
-  'Słowacja':'sk','Węgry':'hu','Rumunia':'ro','Bułgaria':'bg',
-  'Chorwacja':'hr','Serbia':'rs','Słowenia':'si','Grecja':'gr',
-  'Portugalia':'pt','Ukraina':'ua','Rosja':'ru','Białoruś':'by',
-  'Litwa':'lt','Łotwa':'lv','Estonia':'ee','Irlandia':'ie',
-  'Islandia':'is','Luksemburg':'lu','Malta':'mt','Cypr':'cy',
-  'Turcja':'tr','Izrael':'il','Maroko':'ma','Mołdawia':'md',
-  'Albania':'al','Kosowo':'xk','Czarnogóra':'me','Macedonia Północna':'mk',
-  'Bośnia i Hercegowina':'ba',
-  'Poland':'pl','Germany':'de','France':'fr','United Kingdom':'gb',
-  'Spain':'es','Italy':'it','Netherlands':'nl','Belgium':'be',
-  'Sweden':'se','Norway':'no','Denmark':'dk','Finland':'fi',
-  'Switzerland':'ch','Czech Republic':'cz','Czechia':'cz','Slovakia':'sk',
-  'Hungary':'hu','Romania':'ro','Bulgaria':'bg','Croatia':'hr',
-  'Slovenia':'si','Greece':'gr','Portugal':'pt','Ukraine':'ua',
-  'Russia':'ru','Belarus':'by','Lithuania':'lt','Latvia':'lv',
-  'Estonia':'ee','Ireland':'ie','Iceland':'is','Luxembourg':'lu',
-  'Cyprus':'cy','Turkey':'tr','Israel':'il','Morocco':'ma','Moldova':'md',
-  'Serbia':'rs','Austria':'at',
-};
-function flagImg(country){
-  if(!country) return '';
-  const iso=COUNTRY_ISO[country];
+// flagImg uses country_iso field (2-letter ISO code) stored directly in data.json
+function flagImg(iso){
   if(!iso) return '';
-  return `<img src="https://flagcdn.com/20x15/${iso}.png" width="20" height="15" alt="${country}" style="vertical-align:middle;margin-right:4px;border-radius:2px">`;
+  return `<img src="https://flagcdn.com/20x15/${iso}.png" width="20" height="15" alt="${iso}" style="vertical-align:middle;margin-right:4px;border-radius:2px">`;
 }
 function safeFlag(f){ return ''; }
 const mono=v=>`<span class="mono">${v}</span>`;
@@ -406,7 +381,7 @@ function init(){
   document.getElementById('s-n').textContent=DATA.length;
   document.getElementById('s-sims').textContent=N_SIMS.toLocaleString('pl');
   document.getElementById('hdr-badge').textContent=DATA.length+' zawodników · '+N_SIMS.toLocaleString('pl')+' symulacji';
-  document.getElementById('s-fav').innerHTML=fav?flagImg(fav.country)+' '+fav.Name.split(' ').slice(-1)[0]:'—';
+  document.getElementById('s-fav').innerHTML=fav?flagImg(fav.country_iso)+' '+fav.Name.split(' ').slice(-1)[0]:'—';
   document.getElementById('s-fav-pct').textContent=fav?pct(fav['1 msc']):'—';
   document.getElementById('s-medal').textContent=DATA.filter(r=>(r.TOP3||0)>0.05).length;
   renderPodium(); chWin(); chMedal();
@@ -425,7 +400,7 @@ function renderPodium(){
   ];
   document.getElementById('podium').innerHTML=cfg.map(c=>c.d?`
     <div class="ps ${c.cls}">
-      <div class="nm">${flagImg(c.d.country)} ${c.d.Name}</div>
+      <div class="nm">${flagImg(c.d.country_iso)} ${c.d.Name}</div>
       <div class="pc">${pct(c.d['1 msc'])}</div>
       <div class="pb-block">${c.m}</div>
     </div>`:``).join('');
@@ -434,7 +409,7 @@ function renderPodium(){
 // ─── CHART: WIN ───────────────────────────────────────
 function chWin(){
   const t=sortedBy().slice(0,10);
-  const labels=t.map(r=>flagImg(r.country)+' '+r.Name.split(' ').slice(-1)[0]);
+  const labels=t.map(r=>r.Name.split(' ').slice(-1)[0]);
   const vals=t.map(r=>(r['1 msc']||0)*100);
   dc('win');
   CH['win']=new Chart(document.getElementById('ch-win'),{
@@ -456,7 +431,7 @@ function chWin(){
 function chMedal(){
   const n=parseInt(document.getElementById('medal-n').value)||0;
   const t=sortedBy(); const sub=n>0?t.slice(0,n):t;
-  const labels=sub.map(r=>flagImg(r.country)+' '+r.Name.split(' ').slice(-1)[0]);
+  const labels=sub.map(r=>r.Name.split(' ').slice(-1)[0]);
   const w=sub.map(r=>(r['1 msc']||0)*100);
   const s=sub.map(r=>(r['2 msc']||0)*100);
   const b=sub.map(r=>(r['3 msc']||0)*100);
@@ -494,7 +469,7 @@ function topnFilter(){
   const matches=DATA.filter(r=>r.Name.toLowerCase().includes(q)).slice(0,12);
   wrap.innerHTML=matches.map(r=>`
     <div class="chip" style="font-size:11px" onclick="topnAdd('${r.Name.replace(/'/g,"\\'")}')">
-      ${flagImg(r.country)} ${r.Name}
+      ${flagImg(r.country_iso)} ${r.Name}
     </div>`).join('');
 }
 
@@ -519,7 +494,7 @@ function renderTopnSelected(){
   document.getElementById('topn-selected').innerHTML=topnSelected.map(name=>{
     const r=DATA.find(d=>d.Name===name);
     return `<div class="sel-chip" onclick="topnRemove('${name.replace(/'/g,"\\'")}')">
-      ${flagImg(r?r.country:'')} ${name.split(' ').slice(-1)[0]} ✕
+      ${flagImg(r?r.country_iso:'')} ${name.split(' ').slice(-1)[0]} ✕
     </div>`;
   }).join('');
 }
@@ -533,7 +508,7 @@ function chTopN(){
   CH['topn']=new Chart(document.getElementById('ch-topn'),{
     type:'line',
     data:{labels:cols,datasets:rows.map((r,i)=>({
-      label:flagImg(r.country)+' '+r.Name.split(' ').slice(-1)[0],
+      label:r.Name.split(' ').slice(-1)[0],
       data:cols.map(c=>(r[c]||0)*100),
       borderColor:clrs[i%clrs.length],backgroundColor:'transparent',
       pointBackgroundColor:clrs[i%clrs.length],pointRadius:4,borderWidth:2,tension:0.3
@@ -554,13 +529,10 @@ const COL_COLORS={'1 msc':'#ffd700','2 msc':'#c0c0c0','3 msc':'#cd7f32'};
 function tcol(c){return COL_COLORS[c]||(c.startsWith('TOP')?'#4a9eff':'#00e5a0');}
 
 function defaultSort(arr){
-  // chance cols: descending (left to right as tiebreaker), median_place asc, best_place asc
-  const chanceCols=CHANCE_COLS.filter(c=>DATA[0]&&DATA[0][c]!==undefined);
+  // Primary: 1 msc descending; tiebreaker: median_place asc, best_place asc
   return [...arr].sort((a,b)=>{
-    for(const c of chanceCols){
-      const diff=(b[c]||0)-(a[c]||0);
-      if(Math.abs(diff)>1e-9) return diff;
-    }
+    const diff=(b['1 msc']||0)-(a['1 msc']||0);
+    if(Math.abs(diff)>1e-9) return diff;
     const md=(a.median_place||9999)-(b.median_place||9999);
     if(Math.abs(md)>1e-9) return md;
     return (a.best_place||9999)-(b.best_place||9999);
@@ -589,7 +561,7 @@ function tblRender(rows){
   document.getElementById('tbl-body').innerHTML=rows.map((row,i)=>{
     const rk=rankMap[row.Name]||(i+1);
     const rkStr=rk===1?'🥇':rk===2?'🥈':rk===3?'🥉':`<span class="rn">${rk}</span>`;
-    const nameTd=`<td><span style="margin-right:5px">${flagImg(row.country)}</span><strong style="font-size:13px">${row.Name}</strong></td>`;
+    const nameTd=`<td><span style="margin-right:5px">${flagImg(row.country_iso)}</span><strong style="font-size:13px">${row.Name}</strong></td>`;
     const chanceTds=chanceCols.map(c=>{
       const v=row[c];
       if(typeof v==='number'){
@@ -644,7 +616,7 @@ function buildChips(){
   const top20=sortedBy().slice(0,20);
   document.getElementById('chips').innerHTML=top20.map(r=>`
     <div class="chip" data-name="${r.Name}" onclick="selectPlayer(this.dataset.name)">
-      ${flagImg(r.country)} ${r.Name}
+      ${flagImg(r.country_iso)} ${r.Name}
     </div>`).join('');
 }
 
@@ -661,7 +633,7 @@ function chipFilter(){
       const div=document.createElement('div');
       div.className='chip extra';
       div.dataset.name=r.Name;
-      div.innerHTML=`${flagImg(r.country)} ${r.Name}`;
+      div.innerHTML=`${flagImg(r.country_iso)} ${r.Name}`;
       div.onclick=()=>selectPlayer(r.Name);
       wrap.appendChild(div);
     });
@@ -680,7 +652,7 @@ function renderProfile(name){
   const row=DATA.find(r=>r.Name===name); if(!row) return;
   const chanceCols=CHANCE_COLS.filter(c=>row[c]!==undefined&&typeof row[c]==='number');
   const top=sortedBy(); const rank=top.findIndex(r=>r.Name===name)+1;
-  document.getElementById('profile-title').innerHTML=`${flagImg(row.country)} ${name} — ranking #${rank}`;
+  document.getElementById('profile-title').innerHTML=`${flagImg(row.country_iso)} ${name} — ranking #${rank}`;
 
   document.getElementById('profile-cards').innerHTML=chanceCols.map(c=>`
     <div class="rc">
@@ -702,7 +674,7 @@ function renderProfile(name){
   CH['radar']=new Chart(document.getElementById('ch-radar'),{
     type:'radar',
     data:{labels:chanceCols,datasets:top5.map((r,i)=>({
-      label:flagImg(r.country)+' '+r.Name.split(' ').slice(-1)[0],
+      label:r.Name.split(' ').slice(-1)[0],
       data:chanceCols.map(c=>(r[c]||0)*100),
       borderColor:r.Name===name?'#00e5a0':clrs[i]+'bb',
       backgroundColor:r.Name===name?'rgba(0,229,160,0.08)':'transparent',
@@ -860,7 +832,7 @@ function buildPodiums(){
   if(!PODIUMS.length) return;
 
   // TOP 10 table
-  const getFlag=n=>{const r=DATA.find(d=>d.Name===n);return r?flagImg(r.country):'';};
+  const getFlag=n=>{const r=DATA.find(d=>d.Name===n);return r?flagImg(r.country_iso):'';};
   const mkRow=(p,i)=>`
     <tr>
       <td><span class="rn">${i+1}</span></td>
