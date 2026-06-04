@@ -2,6 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Euro 2026 — 3x3 Blindfolded Simulation Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -346,6 +347,11 @@ async function boot(){
 
 // ─── HELPERS ──────────────────────────────────────────
 const pct=v=>(v==null||isNaN(v))?'—':(v*100).toFixed(1)+'%';
+function safeFlag(f){
+  if(!f) return '';
+  // encode each codepoint as HTML entity so encoding issues don't mangle emoji
+  return [...f].map(c=>`&#x${c.codePointAt(0).toString(16).toUpperCase()};`).join('');
+}
 const mono=v=>`<span class="mono">${v}</span>`;
 
 function fmtTime(v){
@@ -373,7 +379,7 @@ function init(){
   document.getElementById('s-n').textContent=DATA.length;
   document.getElementById('s-sims').textContent=N_SIMS.toLocaleString('pl');
   document.getElementById('hdr-badge').textContent=DATA.length+' zawodników · '+N_SIMS.toLocaleString('pl')+' symulacji';
-  document.getElementById('s-fav').textContent=fav?(fav.flag||'')+' '+fav.Name.split(' ').slice(-1)[0]:'—';
+  document.getElementById('s-fav').innerHTML=fav?safeFlag(fav.flag)+' '+fav.Name.split(' ').slice(-1)[0]:'—';
   document.getElementById('s-fav-pct').textContent=fav?pct(fav['1 msc']):'—';
   document.getElementById('s-medal').textContent=DATA.filter(r=>(r.TOP3||0)>0.05).length;
   renderPodium(); chWin(); chMedal();
@@ -394,7 +400,7 @@ function renderPodium(){
     ];
     document.getElementById('podium').innerHTML=cfg.map(c=>c.d?`
       <div class="ps ${c.cls}">
-        <div class="nm">${(c.d.flag||'')} ${c.d.Name}</div>
+        <div class="nm">${safeFlag(c.d.flag)} ${c.d.Name}</div>
         <div class="pc">${pct(c.d['1 msc'])}</div>
         <div class="pb-block">${c.m}</div>
       </div>`:``).join('');
@@ -414,7 +420,7 @@ function renderPodium(){
       Najczęstsza kombinacja: ${(best.pct*100).toFixed(1)}% symulacji
     </div>`+cfg.map(c=>`
     <div class="ps ${c.cls}">
-      <div class="nm">${c.d.flag||''} ${c.d.Name}</div>
+      <div class="nm">${safeFlag(c.d.flag)} ${c.d.Name}</div>
       <div class="pc">${c.m}</div>
       <div class="pb-block">${c.rank}</div>
     </div>`).join('');
@@ -424,7 +430,7 @@ function renderPodium(){
 // ─── CHART: WIN ───────────────────────────────────────
 function chWin(){
   const t=sortedBy().slice(0,10);
-  const labels=t.map(r=>(r.flag||'')+' '+r.Name.split(' ').slice(-1)[0]);
+  const labels=t.map(r=>safeFlag(r.flag)+' '+r.Name.split(' ').slice(-1)[0]);
   const vals=t.map(r=>(r['1 msc']||0)*100);
   dc('win');
   CH['win']=new Chart(document.getElementById('ch-win'),{
@@ -446,7 +452,7 @@ function chWin(){
 function chMedal(){
   const n=parseInt(document.getElementById('medal-n').value)||0;
   const t=sortedBy(); const sub=n>0?t.slice(0,n):t;
-  const labels=sub.map(r=>(r.flag||'')+' '+r.Name.split(' ').slice(-1)[0]);
+  const labels=sub.map(r=>safeFlag(r.flag)+' '+r.Name.split(' ').slice(-1)[0]);
   const w=sub.map(r=>(r['1 msc']||0)*100);
   const s=sub.map(r=>(r['2 msc']||0)*100);
   const b=sub.map(r=>(r['3 msc']||0)*100);
@@ -484,7 +490,7 @@ function topnFilter(){
   const matches=DATA.filter(r=>r.Name.toLowerCase().includes(q)).slice(0,12);
   wrap.innerHTML=matches.map(r=>`
     <div class="chip" style="font-size:11px" onclick="topnAdd('${r.Name.replace(/'/g,"\\'")}')">
-      ${r.flag||''} ${r.Name}
+      ${safeFlag(r.flag)} ${r.Name}
     </div>`).join('');
 }
 
@@ -509,7 +515,7 @@ function renderTopnSelected(){
   document.getElementById('topn-selected').innerHTML=topnSelected.map(name=>{
     const r=DATA.find(d=>d.Name===name);
     return `<div class="sel-chip" onclick="topnRemove('${name.replace(/'/g,"\\'")}')">
-      ${r?r.flag||'':''} ${name.split(' ').slice(-1)[0]} ✕
+      ${safeFlag(r?r.flag:'')} ${name.split(' ').slice(-1)[0]} ✕
     </div>`;
   }).join('');
 }
@@ -523,7 +529,7 @@ function chTopN(){
   CH['topn']=new Chart(document.getElementById('ch-topn'),{
     type:'line',
     data:{labels:cols,datasets:rows.map((r,i)=>({
-      label:(r.flag||'')+' '+r.Name.split(' ').slice(-1)[0],
+      label:safeFlag(r.flag)+' '+r.Name.split(' ').slice(-1)[0],
       data:cols.map(c=>(r[c]||0)*100),
       borderColor:clrs[i%clrs.length],backgroundColor:'transparent',
       pointBackgroundColor:clrs[i%clrs.length],pointRadius:4,borderWidth:2,tension:0.3
@@ -567,7 +573,7 @@ function tblRender(rows){
   document.getElementById('tbl-body').innerHTML=rows.map((row,i)=>{
     const rk=rankMap[row.Name]||(i+1);
     const rkStr=rk===1?'🥇':rk===2?'🥈':rk===3?'🥉':`<span class="rn">${rk}</span>`;
-    const nameTd=`<td><span style="margin-right:5px">${row.flag||''}</span><strong style="font-size:13px">${row.Name}</strong></td>`;
+    const nameTd=`<td><span style="margin-right:5px">${safeFlag(row.flag)}</span><strong style="font-size:13px">${row.Name}</strong></td>`;
     const chanceTds=chanceCols.map(c=>{
       const v=row[c];
       if(typeof v==='number'){
@@ -576,7 +582,7 @@ function tblRender(rows){
       }
       return `<td>—</td>`;
     }).join('');
-    const med=row.median_place!=null?`<span class="mono">${row.median_place}</span>`:'—';
+    const med=row.median_place!=null?`<span class="mono">${Number.isInteger(row.median_place)?row.median_place:row.median_place.toFixed(1)}</span>`:'—';
     const worst=row.best_place!=null?`<span class="mono">${row.best_place}</span>`:'—';
     return `<tr><td>${rkStr}</td>${nameTd}${chanceTds}<td>${med}</td><td>${worst}</td></tr>`;
   }).join('');
@@ -622,7 +628,7 @@ function buildChips(){
   const top20=sortedBy().slice(0,20);
   document.getElementById('chips').innerHTML=top20.map(r=>`
     <div class="chip" data-name="${r.Name}" onclick="selectPlayer(this.dataset.name)">
-      ${r.flag||''} ${r.Name}
+      ${safeFlag(r.flag)} ${r.Name}
     </div>`).join('');
 }
 
@@ -639,7 +645,7 @@ function chipFilter(){
       const div=document.createElement('div');
       div.className='chip extra';
       div.dataset.name=r.Name;
-      div.innerHTML=`${r.flag||''} ${r.Name}`;
+      div.innerHTML=`${safeFlag(r.flag)} ${r.Name}`;
       div.onclick=()=>selectPlayer(r.Name);
       wrap.appendChild(div);
     });
@@ -658,7 +664,7 @@ function renderProfile(name){
   const row=DATA.find(r=>r.Name===name); if(!row) return;
   const chanceCols=CHANCE_COLS.filter(c=>row[c]!==undefined&&typeof row[c]==='number');
   const top=sortedBy(); const rank=top.findIndex(r=>r.Name===name)+1;
-  document.getElementById('profile-title').textContent=`${row.flag||''} ${name} — ranking #${rank}`;
+  document.getElementById('profile-title').innerHTML=`${safeFlag(row.flag)} ${name} — ranking #${rank}`;
 
   document.getElementById('profile-cards').innerHTML=chanceCols.map(c=>`
     <div class="rc">
@@ -680,7 +686,7 @@ function renderProfile(name){
   CH['radar']=new Chart(document.getElementById('ch-radar'),{
     type:'radar',
     data:{labels:chanceCols,datasets:top5.map((r,i)=>({
-      label:(r.flag||'')+' '+r.Name.split(' ').slice(-1)[0],
+      label:safeFlag(r.flag)+' '+r.Name.split(' ').slice(-1)[0],
       data:chanceCols.map(c=>(r[c]||0)*100),
       borderColor:r.Name===name?'#00e5a0':clrs[i]+'bb',
       backgroundColor:r.Name===name?'rgba(0,229,160,0.08)':'transparent',
@@ -838,7 +844,7 @@ function buildPodiums(){
   if(!PODIUMS.length) return;
 
   // TOP 10 table
-  const getFlag=n=>{const r=DATA.find(d=>d.Name===n);return r?r.flag||'':'';};
+  const getFlag=n=>{const r=DATA.find(d=>d.Name===n);return r?safeFlag(r.flag):'';};
   const mkRow=(p,i)=>`
     <tr>
       <td><span class="rn">${i+1}</span></td>
@@ -870,8 +876,8 @@ function buildPodiums(){
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},
         tooltip:{callbacks:{
-          title:(_,i)=>{
-            const p=top10[_.dataIndex];
+          title:(items)=>{
+            const p=top10[items[0].dataIndex];
             return p?`${p.p1} / ${p.p2} / ${p.p3}`:'';
           },
           label:c=>`${c.raw.toFixed(2)}% symulacji`
