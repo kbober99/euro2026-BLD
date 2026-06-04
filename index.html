@@ -288,8 +288,7 @@ footer{text-align:center;padding:24px;color:var(--muted);font-size:12px;border-t
 
     <!-- PODIUMS -->
     <div id="t-podiums" style="display:none">
-      <div class="g2">
-        <div class="panel">
+      <div class="panel">
           <div class="ph"><span class="pt">TOP 10 najczęstszych kombinacji podium</span></div>
           <div class="pb" style="padding:0">
             <div class="tw" style="max-height:none">
@@ -297,10 +296,7 @@ footer{text-align:center;padding:24px;color:var(--muted);font-size:12px;border-t
             </div>
           </div>
         </div>
-        <div class="panel">
-          <div class="ph"><span class="pt">Rozkład kombinacji — wykres</span></div>
-          <div class="pb"><div style="position:relative;height:340px"><canvas id="ch-podiums"></canvas></div></div>
-        </div>
+
       </div>
       <div class="panel">
         <div class="ph"><span class="pt">Wszystkie 30 kombinacji</span></div>
@@ -346,7 +342,7 @@ async function boot(){
 }
 
 // ─── HELPERS ──────────────────────────────────────────
-const pct=v=>(v==null||isNaN(v))?'—':(v*100).toFixed(1)+'%';
+const pct=v=>(v==null||isNaN(v))?'—':(v*100).toFixed(2)+'%';
 // Country -> ISO2 -> flag image
 // flagImg uses country_iso field (2-letter ISO code) stored directly in data.json
 function flagImg(iso){
@@ -419,7 +415,7 @@ function chWin(){
       borderColor:vals.map((_,i)=>i===0?'#ffd700':i===1?'#c0c0c0':i===2?'#cd7f32':'rgba(0,229,160,0.8)'),
       borderWidth:1,borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw.toFixed(1)}%`}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw.toFixed(2)}%`}}},
       scales:{
         x:{ticks:{color:'#7a8090',font:{size:11},autoSkip:false,maxRotation:35},grid:{color:'rgba(255,255,255,0.04)'}},
         y:{ticks:{color:'#7a8090',font:{size:11},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.06)'}}
@@ -446,7 +442,7 @@ function chMedal(){
       {label:'3.',data:b,backgroundColor:'rgba(205,127,50,0.65)',borderRadius:3},
     ]},
     options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label} miejsce: ${c.raw.toFixed(1)}%`}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label} miejsce: ${c.raw.toFixed(2)}%`}}},
       scales:{
         x:{ticks:{color:'#7a8090',font:{size:11},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}},
         y:{ticks:{color:'#e8eaf0',font:{size:11},autoSkip:false},grid:{color:'rgba(255,255,255,0.03)'}}
@@ -515,7 +511,7 @@ function chTopN(){
     }))},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:true,position:'top',labels:{color:'#7a8090',font:{size:11},boxWidth:10,padding:10}},
-        tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toFixed(1)}%`}}},
+        tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toFixed(2)}%`}}},
       scales:{
         x:{ticks:{color:'#7a8090',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'}},
         y:{min:0,max:100,ticks:{color:'#7a8090',font:{size:11},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}}
@@ -683,7 +679,7 @@ function renderProfile(name){
       pointRadius:r.Name===name?4:2,
     }))},
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:'#7a8090',font:{size:11},boxWidth:10}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toFixed(1)}%`}}},
+      plugins:{legend:{labels:{color:'#7a8090',font:{size:11},boxWidth:10}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toFixed(2)}%`}}},
       scales:{r:{min:0,ticks:{color:'#7a8090',font:{size:10},backdropColor:'transparent',callback:v=>v+'%'},
         grid:{color:'rgba(255,255,255,0.07)'},angleLines:{color:'rgba(255,255,255,0.07)'},pointLabels:{color:'#7a8090',font:{size:11}}}}}
   });
@@ -697,7 +693,7 @@ function renderProfile(name){
       borderColor:chanceCols.map(c=>CARD_COLORS[c]||'#00e5a0'),
       borderWidth:1.5,borderRadius:5}]},
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+'%'}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(2)+'%'}}},
       scales:{
         x:{ticks:{color:'#7a8090',font:{size:11}},grid:{color:'rgba(255,255,255,0.04)'}},
         y:{min:0,max:100,ticks:{color:'#7a8090',font:{size:11},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}}
@@ -847,34 +843,7 @@ function buildPodiums(){
   document.getElementById('pod-table').innerHTML=hdr+'<tbody>'+PODIUMS.slice(0,10).map((p,i)=>mkRow(p,i)).join('')+'</tbody>';
   document.getElementById('pod-table-full').innerHTML=hdr+'<tbody>'+PODIUMS.map((p,i)=>mkRow(p,i)).join('')+'</tbody>';
 
-  // Chart: top 10
-  const top10=PODIUMS.slice(0,10);
-  const labels=top10.map((_,i)=>`#${i+1}`);
-  const vals=top10.map(p=>parseFloat((p.pct*100).toFixed(2)));
-  dc('podiums');
-  CH['podiums']=new Chart(document.getElementById('ch-podiums'),{
-    type:'bar',
-    data:{labels,datasets:[{
-      data:vals,
-      backgroundColor:'rgba(0,229,160,0.45)',
-      borderColor:'rgba(0,229,160,0.85)',
-      borderWidth:1,borderRadius:4
-    }]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},
-        tooltip:{callbacks:{
-          title:(items)=>{
-            const p=top10[items[0].dataIndex];
-            return p?`${p.p1} / ${p.p2} / ${p.p3}`:'';
-          },
-          label:c=>`${c.raw.toFixed(2)}% symulacji`
-        }}
-      },
-      scales:{
-        x:{ticks:{color:'#7a8090',font:{size:12}},grid:{color:'rgba(255,255,255,0.04)'}},
-        y:{ticks:{color:'#7a8090',font:{size:11},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}}
-      }}
-  });
+
 }
 
 // ─── TABS ─────────────────────────────────────────────
