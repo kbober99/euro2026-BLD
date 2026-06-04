@@ -517,7 +517,7 @@ function renderTopnSelected(){
 // ─── CHART: TOP-N LINE ────────────────────────────────
 function chTopN(){
   const rows=topnSelected.map(n=>DATA.find(r=>r.Name===n)).filter(Boolean);
-  const cols=Object.keys(DATA[0]).filter(c=>c!=='Name'&&c!=='flag'&&c!=='country'&&c!=='median_place'&&c!=='worst_place'&&typeof DATA[0][c]==='number');
+  const cols=Object.keys(DATA[0]).filter(c=>c!=='Name'&&c!=='flag'&&c!=='country'&&c!=='median_place'&&c!=='best_place'&&typeof DATA[0][c]==='number');
   const clrs=['#ffd700','#c0c0c0','#cd7f32','#00e5a0','#4a9eff','#ff6b35','#a78bfa','#34d399','#f472b6','#38bdf8'];
   dc('topn');
   CH['topn']=new Chart(document.getElementById('ch-topn'),{
@@ -544,13 +544,13 @@ const COL_COLORS={'1 msc':'#ffd700','2 msc':'#c0c0c0','3 msc':'#cd7f32'};
 function tcol(c){return COL_COLORS[c]||(c.startsWith('TOP')?'#4a9eff':'#00e5a0');}
 
 function buildTable(){
-  // Columns: rank, flag+name, country, chance cols, median_place, worst_place
+  // Columns: rank, flag+name, country, chance cols, median_place, best_place
   const chanceCols=CHANCE_COLS.filter(c=>DATA[0]&&DATA[0][c]!==undefined);
-  const allCols=['Name',...chanceCols,'median_place','worst_place'];
+  const allCols=['Name',...chanceCols,'median_place','best_place'];
   document.getElementById('tbl-head').innerHTML=
     '<th onclick="tblSort(\'#\')">№</th>'+
     allCols.map((c,i)=>{
-      const label=c==='median_place'?'Mediana':c==='worst_place'?'Najgorsze':c==='Name'?'Zawodnik':c;
+      const label=c==='median_place'?'Mediana':c==='best_place'?'Najlepsze':c==='Name'?'Zawodnik':c;
       return `<th onclick="tblSort('${c}')">${label}</th>`;
     }).join('');
   // Default sort: median_place asc
@@ -577,7 +577,7 @@ function tblRender(rows){
       return `<td>—</td>`;
     }).join('');
     const med=row.median_place!=null?`<span class="mono">${row.median_place}</span>`:'—';
-    const worst=row.worst_place!=null?`<span class="mono">${row.worst_place}</span>`:'—';
+    const worst=row.best_place!=null?`<span class="mono">${row.best_place}</span>`:'—';
     return `<tr><td>${rkStr}</td>${nameTd}${chanceTds}<td>${med}</td><td>${worst}</td></tr>`;
   }).join('');
 }
@@ -602,7 +602,7 @@ function tblSort(col){
   });
   document.querySelectorAll('#tbl-head th').forEach(th=>th.classList.remove('sa','sd'));
   const ths=[...document.querySelectorAll('#tbl-head th')];
-  const cols=['#','Name',...CHANCE_COLS.filter(c=>DATA[0]&&DATA[0][c]!==undefined),'median_place','worst_place'];
+  const cols=['#','Name',...CHANCE_COLS.filter(c=>DATA[0]&&DATA[0][c]!==undefined),'median_place','best_place'];
   const idx=cols.indexOf(col);
   if(idx>=0) ths[idx].classList.add(sortAsc?'sa':'sd');
   tblRender(src);
@@ -610,7 +610,7 @@ function tblSort(col){
 
 function tblExport(){
   const chanceCols=CHANCE_COLS.filter(c=>DATA[0]&&DATA[0][c]!==undefined);
-  const cols=['Name','country',...chanceCols,'median_place','worst_place'];
+  const cols=['Name','country',...chanceCols,'median_place','best_place'];
   const lines=[cols.join(';'),...DATA.map(r=>cols.map(c=>r[c]??'').join(';'))];
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv'}));
@@ -670,8 +670,8 @@ function renderProfile(name){
       <div class="rv" style="color:#94a3b8">${row.median_place??'—'}</div>
     </div>
     <div class="rc">
-      <div class="rn2">Najgorsze</div>
-      <div class="rv" style="color:#94a3b8">${row.worst_place??'—'}</div>
+      <div class="rn2">Najlepsze</div>
+      <div class="rv" style="color:#94a3b8">${row.best_place??'—'}</div>
     </div>`;
 
   const top5=top.slice(0,5); if(!top5.find(r=>r.Name===name)) top5[4]=row;
