@@ -96,7 +96,7 @@ const EVENTS = [
 
 async function checkFile(id){
   try{
-    const r=await fetch(`${id}.json`,{method:'HEAD'});
+    const r=await fetch(`${id}.json`,{method:'GET',cache:'no-cache'});
     return r.ok;
   }catch(e){ return false; }
 }
