@@ -347,11 +347,38 @@ async function boot(){
 
 // ─── HELPERS ──────────────────────────────────────────
 const pct=v=>(v==null||isNaN(v))?'—':(v*100).toFixed(1)+'%';
-function safeFlag(f){
-  if(!f) return '';
-  // encode each codepoint as HTML entity so encoding issues don't mangle emoji
-  return [...f].map(c=>`&#x${c.codePointAt(0).toString(16).toUpperCase()};`).join('');
+// Country -> ISO2 -> flag image
+const COUNTRY_ISO={
+  'Polska':'pl','Niemcy':'de','Francja':'fr','Wielka Brytania':'gb',
+  'Anglia':'gb','Hiszpania':'es','Włochy':'it','Holandia':'nl',
+  'Belgia':'be','Szwecja':'se','Norwegia':'no','Dania':'dk',
+  'Finlandia':'fi','Austria':'at','Szwajcaria':'ch','Czechy':'cz',
+  'Słowacja':'sk','Węgry':'hu','Rumunia':'ro','Bułgaria':'bg',
+  'Chorwacja':'hr','Serbia':'rs','Słowenia':'si','Grecja':'gr',
+  'Portugalia':'pt','Ukraina':'ua','Rosja':'ru','Białoruś':'by',
+  'Litwa':'lt','Łotwa':'lv','Estonia':'ee','Irlandia':'ie',
+  'Islandia':'is','Luksemburg':'lu','Malta':'mt','Cypr':'cy',
+  'Turcja':'tr','Izrael':'il','Maroko':'ma','Mołdawia':'md',
+  'Albania':'al','Kosowo':'xk','Czarnogóra':'me','Macedonia Północna':'mk',
+  'Bośnia i Hercegowina':'ba',
+  'Poland':'pl','Germany':'de','France':'fr','United Kingdom':'gb',
+  'Spain':'es','Italy':'it','Netherlands':'nl','Belgium':'be',
+  'Sweden':'se','Norway':'no','Denmark':'dk','Finland':'fi',
+  'Switzerland':'ch','Czech Republic':'cz','Czechia':'cz','Slovakia':'sk',
+  'Hungary':'hu','Romania':'ro','Bulgaria':'bg','Croatia':'hr',
+  'Slovenia':'si','Greece':'gr','Portugal':'pt','Ukraine':'ua',
+  'Russia':'ru','Belarus':'by','Lithuania':'lt','Latvia':'lv',
+  'Estonia':'ee','Ireland':'ie','Iceland':'is','Luxembourg':'lu',
+  'Cyprus':'cy','Turkey':'tr','Israel':'il','Morocco':'ma','Moldova':'md',
+  'Serbia':'rs','Austria':'at',
+};
+function flagImg(country){
+  if(!country) return '';
+  const iso=COUNTRY_ISO[country];
+  if(!iso) return '';
+  return `<img src="https://flagcdn.com/20x15/${iso}.png" width="20" height="15" alt="${country}" style="vertical-align:middle;margin-right:4px;border-radius:2px">`;
 }
+function safeFlag(f){ return ''; }
 const mono=v=>`<span class="mono">${v}</span>`;
 
 function fmtTime(v){
@@ -379,7 +406,7 @@ function init(){
   document.getElementById('s-n').textContent=DATA.length;
   document.getElementById('s-sims').textContent=N_SIMS.toLocaleString('pl');
   document.getElementById('hdr-badge').textContent=DATA.length+' zawodników · '+N_SIMS.toLocaleString('pl')+' symulacji';
-  document.getElementById('s-fav').innerHTML=fav?safeFlag(fav.flag)+' '+fav.Name.split(' ').slice(-1)[0]:'—';
+  document.getElementById('s-fav').innerHTML=fav?flagImg(fav.country)+' '+fav.Name.split(' ').slice(-1)[0]:'—';
   document.getElementById('s-fav-pct').textContent=fav?pct(fav['1 msc']):'—';
   document.getElementById('s-medal').textContent=DATA.filter(r=>(r.TOP3||0)>0.05).length;
   renderPodium(); chWin(); chMedal();
@@ -390,47 +417,24 @@ function init(){
 
 // ─── PODIUM (from podiums data) ───────────────────────
 function renderPodium(){
-  if(!PODIUMS.length){
-    // fallback: top3 by win chance
-    const top=sortedBy();
-    const cfg=[
-      {d:top[1],cls:'p2',m:'🥈'},
-      {d:top[0],cls:'p1',m:'🥇'},
-      {d:top[2],cls:'p3',m:'🥉'}
-    ];
-    document.getElementById('podium').innerHTML=cfg.map(c=>c.d?`
-      <div class="ps ${c.cls}">
-        <div class="nm">${safeFlag(c.d.flag)} ${c.d.Name}</div>
-        <div class="pc">${pct(c.d['1 msc'])}</div>
-        <div class="pb-block">${c.m}</div>
-      </div>`:``).join('');
-    return;
-  }
-  // Use most frequent podium combination
-  const best=PODIUMS[0];
-  const names=[best.p1,best.p2,best.p3];
-  const getRow=n=>DATA.find(r=>r.Name===n)||{Name:n,flag:''};
+  const top=sortedBy();
   const cfg=[
-    {d:getRow(names[1]),cls:'p2',m:'🥈',rank:2},
-    {d:getRow(names[0]),cls:'p1',m:'🥇',rank:1},
-    {d:getRow(names[2]),cls:'p3',m:'🥉',rank:3}
+    {d:top[1],cls:'p2',m:'🥈'},
+    {d:top[0],cls:'p1',m:'🥇'},
+    {d:top[2],cls:'p3',m:'🥉'}
   ];
-  document.getElementById('podium').innerHTML=`
-    <div style="position:absolute;top:8px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--muted);font-family:var(--mono);white-space:nowrap">
-      Najczęstsza kombinacja: ${(best.pct*100).toFixed(1)}% symulacji
-    </div>`+cfg.map(c=>`
+  document.getElementById('podium').innerHTML=cfg.map(c=>c.d?`
     <div class="ps ${c.cls}">
-      <div class="nm">${safeFlag(c.d.flag)} ${c.d.Name}</div>
-      <div class="pc">${c.m}</div>
-      <div class="pb-block">${c.rank}</div>
-    </div>`).join('');
-  document.getElementById('podium').style.position='relative';
+      <div class="nm">${flagImg(c.d.country)} ${c.d.Name}</div>
+      <div class="pc">${pct(c.d['1 msc'])}</div>
+      <div class="pb-block">${c.m}</div>
+    </div>`:``).join('');
 }
 
 // ─── CHART: WIN ───────────────────────────────────────
 function chWin(){
   const t=sortedBy().slice(0,10);
-  const labels=t.map(r=>safeFlag(r.flag)+' '+r.Name.split(' ').slice(-1)[0]);
+  const labels=t.map(r=>flagImg(r.country)+' '+r.Name.split(' ').slice(-1)[0]);
   const vals=t.map(r=>(r['1 msc']||0)*100);
   dc('win');
   CH['win']=new Chart(document.getElementById('ch-win'),{
@@ -452,7 +456,7 @@ function chWin(){
 function chMedal(){
   const n=parseInt(document.getElementById('medal-n').value)||0;
   const t=sortedBy(); const sub=n>0?t.slice(0,n):t;
-  const labels=sub.map(r=>safeFlag(r.flag)+' '+r.Name.split(' ').slice(-1)[0]);
+  const labels=sub.map(r=>flagImg(r.country)+' '+r.Name.split(' ').slice(-1)[0]);
   const w=sub.map(r=>(r['1 msc']||0)*100);
   const s=sub.map(r=>(r['2 msc']||0)*100);
   const b=sub.map(r=>(r['3 msc']||0)*100);
@@ -490,7 +494,7 @@ function topnFilter(){
   const matches=DATA.filter(r=>r.Name.toLowerCase().includes(q)).slice(0,12);
   wrap.innerHTML=matches.map(r=>`
     <div class="chip" style="font-size:11px" onclick="topnAdd('${r.Name.replace(/'/g,"\\'")}')">
-      ${safeFlag(r.flag)} ${r.Name}
+      ${flagImg(r.country)} ${r.Name}
     </div>`).join('');
 }
 
@@ -515,7 +519,7 @@ function renderTopnSelected(){
   document.getElementById('topn-selected').innerHTML=topnSelected.map(name=>{
     const r=DATA.find(d=>d.Name===name);
     return `<div class="sel-chip" onclick="topnRemove('${name.replace(/'/g,"\\'")}')">
-      ${safeFlag(r?r.flag:'')} ${name.split(' ').slice(-1)[0]} ✕
+      ${flagImg(r?r.country:'')} ${name.split(' ').slice(-1)[0]} ✕
     </div>`;
   }).join('');
 }
@@ -529,7 +533,7 @@ function chTopN(){
   CH['topn']=new Chart(document.getElementById('ch-topn'),{
     type:'line',
     data:{labels:cols,datasets:rows.map((r,i)=>({
-      label:safeFlag(r.flag)+' '+r.Name.split(' ').slice(-1)[0],
+      label:flagImg(r.country)+' '+r.Name.split(' ').slice(-1)[0],
       data:cols.map(c=>(r[c]||0)*100),
       borderColor:clrs[i%clrs.length],backgroundColor:'transparent',
       pointBackgroundColor:clrs[i%clrs.length],pointRadius:4,borderWidth:2,tension:0.3
@@ -549,6 +553,20 @@ const CHANCE_COLS=['1 msc','2 msc','3 msc','TOP3','TOP5','TOP10','TOP14','TOP25'
 const COL_COLORS={'1 msc':'#ffd700','2 msc':'#c0c0c0','3 msc':'#cd7f32'};
 function tcol(c){return COL_COLORS[c]||(c.startsWith('TOP')?'#4a9eff':'#00e5a0');}
 
+function defaultSort(arr){
+  // chance cols: descending (left to right as tiebreaker), median_place asc, best_place asc
+  const chanceCols=CHANCE_COLS.filter(c=>DATA[0]&&DATA[0][c]!==undefined);
+  return [...arr].sort((a,b)=>{
+    for(const c of chanceCols){
+      const diff=(b[c]||0)-(a[c]||0);
+      if(Math.abs(diff)>1e-9) return diff;
+    }
+    const md=(a.median_place||9999)-(b.median_place||9999);
+    if(Math.abs(md)>1e-9) return md;
+    return (a.best_place||9999)-(b.best_place||9999);
+  });
+}
+
 function buildTable(){
   // Columns: rank, flag+name, country, chance cols, median_place, best_place
   const chanceCols=CHANCE_COLS.filter(c=>DATA[0]&&DATA[0][c]!==undefined);
@@ -559,9 +577,7 @@ function buildTable(){
       const label=c==='median_place'?'Mediana':c==='best_place'?'Najlepsze':c==='Name'?'Zawodnik':c;
       return `<th onclick="tblSort('${c}')">${label}</th>`;
     }).join('');
-  // Default sort: median_place asc
-  const rows=[...DATA].sort((a,b)=>(a.median_place||9999)-(b.median_place||9999));
-  tblRender(rows);
+  tblRender(defaultSort(DATA));
 }
 
 function tblRender(rows){
@@ -573,7 +589,7 @@ function tblRender(rows){
   document.getElementById('tbl-body').innerHTML=rows.map((row,i)=>{
     const rk=rankMap[row.Name]||(i+1);
     const rkStr=rk===1?'🥇':rk===2?'🥈':rk===3?'🥉':`<span class="rn">${rk}</span>`;
-    const nameTd=`<td><span style="margin-right:5px">${safeFlag(row.flag)}</span><strong style="font-size:13px">${row.Name}</strong></td>`;
+    const nameTd=`<td><span style="margin-right:5px">${flagImg(row.country)}</span><strong style="font-size:13px">${row.Name}</strong></td>`;
     const chanceTds=chanceCols.map(c=>{
       const v=row[c];
       if(typeof v==='number'){
@@ -591,7 +607,7 @@ function tblRender(rows){
 function tblFilter(){
   const q=document.getElementById('tbl-search').value.toLowerCase();
   filteredRows=q?DATA.filter(r=>r.Name&&r.Name.toLowerCase().includes(q)):null;
-  const rows=filteredRows||[...DATA].sort((a,b)=>(a.median_place||9999)-(b.median_place||9999));
+  const rows=filteredRows||defaultSort(DATA);
   tblRender(rows);
 }
 
@@ -628,7 +644,7 @@ function buildChips(){
   const top20=sortedBy().slice(0,20);
   document.getElementById('chips').innerHTML=top20.map(r=>`
     <div class="chip" data-name="${r.Name}" onclick="selectPlayer(this.dataset.name)">
-      ${safeFlag(r.flag)} ${r.Name}
+      ${flagImg(r.country)} ${r.Name}
     </div>`).join('');
 }
 
@@ -645,7 +661,7 @@ function chipFilter(){
       const div=document.createElement('div');
       div.className='chip extra';
       div.dataset.name=r.Name;
-      div.innerHTML=`${safeFlag(r.flag)} ${r.Name}`;
+      div.innerHTML=`${flagImg(r.country)} ${r.Name}`;
       div.onclick=()=>selectPlayer(r.Name);
       wrap.appendChild(div);
     });
@@ -664,7 +680,7 @@ function renderProfile(name){
   const row=DATA.find(r=>r.Name===name); if(!row) return;
   const chanceCols=CHANCE_COLS.filter(c=>row[c]!==undefined&&typeof row[c]==='number');
   const top=sortedBy(); const rank=top.findIndex(r=>r.Name===name)+1;
-  document.getElementById('profile-title').innerHTML=`${safeFlag(row.flag)} ${name} — ranking #${rank}`;
+  document.getElementById('profile-title').innerHTML=`${flagImg(row.country)} ${name} — ranking #${rank}`;
 
   document.getElementById('profile-cards').innerHTML=chanceCols.map(c=>`
     <div class="rc">
@@ -686,7 +702,7 @@ function renderProfile(name){
   CH['radar']=new Chart(document.getElementById('ch-radar'),{
     type:'radar',
     data:{labels:chanceCols,datasets:top5.map((r,i)=>({
-      label:safeFlag(r.flag)+' '+r.Name.split(' ').slice(-1)[0],
+      label:flagImg(r.country)+' '+r.Name.split(' ').slice(-1)[0],
       data:chanceCols.map(c=>(r[c]||0)*100),
       borderColor:r.Name===name?'#00e5a0':clrs[i]+'bb',
       backgroundColor:r.Name===name?'rgba(0,229,160,0.08)':'transparent',
@@ -844,7 +860,7 @@ function buildPodiums(){
   if(!PODIUMS.length) return;
 
   // TOP 10 table
-  const getFlag=n=>{const r=DATA.find(d=>d.Name===n);return r?safeFlag(r.flag):'';};
+  const getFlag=n=>{const r=DATA.find(d=>d.Name===n);return r?flagImg(r.country):'';};
   const mkRow=(p,i)=>`
     <tr>
       <td><span class="rn">${i+1}</span></td>
@@ -852,10 +868,9 @@ function buildPodiums(){
       <td>${getFlag(p.p2)} ${p.p2}</td>
       <td>${getFlag(p.p3)} ${p.p3}</td>
       <td><span class="pct-pill">${(p.pct*100).toFixed(2)}%</span></td>
-      <td class="mono">${p.count}</td>
     </tr>`;
   const hdr=`<thead><tr>
-    <th>#</th><th>🥇 1. miejsce</th><th>🥈 2. miejsce</th><th>🥉 3. miejsce</th><th>Częstość</th><th>Liczba</th>
+    <th>#</th><th>🥇 1. miejsce</th><th>🥈 2. miejsce</th><th>🥉 3. miejsce</th><th>Częstość</th>
   </tr></thead>`;
   document.getElementById('pod-table').innerHTML=hdr+'<tbody>'+PODIUMS.slice(0,10).map((p,i)=>mkRow(p,i)).join('')+'</tbody>';
   document.getElementById('pod-table-full').innerHTML=hdr+'<tbody>'+PODIUMS.map((p,i)=>mkRow(p,i)).join('')+'</tbody>';
