@@ -860,29 +860,36 @@ let ctryFiltered = null;
 let ctrySortCol = null, ctrySortAsc = true;
 
 function buildCountries(){
-  const countryMap = {};
-  DATA.forEach(r => {
-    const c = r.country || '—';
+  var countryMap = {};
+  DATA.forEach(function(r) {
+    var c = r.country || '—';
     if (!countryMap[c]) countryMap[c] = { iso: r.country_iso || '', rows: [] };
     countryMap[c].rows.push(r);
   });
 
-  // Dla każdego kraju kombinuj każdą kolumnę z CHANCE_COLS: 1 - prod(1 - p_i)
-  CTRY_DATA = Object.entries(countryMap).map(([country, {iso, rows}]) => {
-    const combined = {};
-    CHANCE_COLS.forEach(col => {
-      let prod = 1;
-      rows.forEach(r => { prod *= (1 - (r[col] || 0)); });
-      combined[col] = 1 - prod;
+  CTRY_DATA = Object.keys(countryMap).map(function(countryName) {
+    var entry = countryMap[countryName];
+    var obj = { country: countryName, iso: entry.iso, n: entry.rows.length };
+    CHANCE_COLS.forEach(function(col) {
+      var prod = 1;
+      entry.rows.forEach(function(r) { prod *= (1 - (r[col] || 0)); });
+      obj[col] = 1 - prod;
     });
-    return Object.assign({ country, iso, n: rows.length }, combined);
-  }).sort((a, b) => (b[CHANCE_COLS[0]] || 0) - (a[CHANCE_COLS[0]] || 0));
+    return obj;
+  }).sort(function(a, b) { return (b[CHANCE_COLS[0]] || 0) - (a[CHANCE_COLS[0]] || 0); });
 
-  // Nagłówek — identyczny układ jak Tabela
   document.getElementById('ctry-head').innerHTML =
-    '<th onclick="ctrySort(\'country\')">Kraj</th>' +
-    '<th onclick="ctrySort(\'n\')">Zaw.</th>' +
-    CHANCE_COLS.map(c => `<th onclick="ctrySort('${c}')">${c}</th>`).join('');
+    '<th>Kraj</th><th>Zaw.</th>' +
+    CHANCE_COLS.map(function(c) { return '<th>' + c + '</th>'; }).join('');
+
+  var ths = document.getElementById('ctry-head').querySelectorAll('th');
+  var hdrCols = ['country', 'n'].concat(CHANCE_COLS);
+  ths.forEach(function(th, i) {
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', (function(col) {
+      return function() { ctrySort(col); };
+    })(hdrCols[i]));
+  });
 
   ctryRender(CTRY_DATA);
   chCtryWin();
