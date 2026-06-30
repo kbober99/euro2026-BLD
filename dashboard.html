@@ -373,20 +373,29 @@ async function boot(){
   document.getElementById('hdr-event').textContent=eventName;
 
   try{
+    console.log('[boot] fetching', eventId+'.json');
+    document.getElementById('loading-msg').textContent='Pobieranie '+eventId+'.json…';
     const r=await fetch(`${eventId}.json`);
     if(!r.ok) throw new Error('HTTP '+r.status);
+    console.log('[boot] fetch OK, reading text…');
+    document.getElementById('loading-msg').textContent='Parsowanie danych…';
     const raw=await r.text();
+    console.log('[boot] raw length', raw.length);
     const sanitized=raw.replace(/:\s*NaN\b/g,': null').replace(/,\s*NaN\b/g,', null').replace(/\[\s*NaN\b/g,'[null');
+    console.log('[boot] sanitized, parsing JSON…');
     const d=JSON.parse(sanitized);
+    console.log('[boot] JSON parsed, chances:', (d.chances||[]).length);
     DATA=d.chances||[]; TIMES=d.times||{}; N_SIMS=d.n_sims||0;
     PODIUMS=d.podiums||[]; META=d.meta||{};
-    // Determine chance columns: all numeric fields except meta fields
     const SKIP=new Set(['flag','country','country_iso','median_place','best_place']);
     CHANCE_COLS=Object.keys(DATA[0]||{}).filter(c=>c!=='Name'&&!SKIP.has(c)&&typeof DATA[0][c]==='number');
+    console.log('[boot] CHANCE_COLS:', CHANCE_COLS);
     if(!DATA.length) throw new Error('Brak danych w pliku');
     document.getElementById('loading-screen').style.display='none';
     document.getElementById('app').style.display='block';
+    console.log('[boot] calling init()…');
     init();
+    console.log('[boot] init() done');
   }catch(e){
     const ls=document.getElementById('loading-screen');
     const sp=ls.querySelector('.spinner');
@@ -871,8 +880,8 @@ function buildCountries(){
 
   // Nagłówek — identyczny układ jak Tabela
   document.getElementById('ctry-head').innerHTML =
-    '<th onclick="ctrySort('country')">Kraj</th>' +
-    '<th onclick="ctrySort('n')">Zaw.</th>' +
+    '<th onclick="ctrySort(\'country\')">Kraj</th>' +
+    '<th onclick="ctrySort(\'n\')">Zaw.</th>' +
     CHANCE_COLS.map(c => `<th onclick="ctrySort('${c}')">${c}</th>`).join('');
 
   ctryRender(CTRY_DATA);
