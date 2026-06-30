@@ -187,6 +187,7 @@ footer{text-align:center;padding:24px;color:var(--muted);font-size:12px;border-t
       <div class="tab" onclick="tab('profiles')">Profile</div>
       <div class="tab" onclick="tab('times')">Czasy awansu</div>
       <div class="tab" onclick="tab('podiums')">Podium kombinacje</div>
+      <div class="tab" onclick="tab('countries')">Kraje</div>
     </div>
 
     <!-- OVERVIEW -->
@@ -306,6 +307,41 @@ footer{text-align:center;padding:24px;color:var(--muted);font-size:12px;border-t
       </div>
     </div>
 
+    <!-- COUNTRIES -->
+    <div id="t-countries" style="display:none">
+      <div class="g2">
+        <div class="panel">
+          <div class="ph">
+            <span class="pt">Tabela krajów</span>
+            <div class="ctrls">
+              <input type="text" id="ctry-search" placeholder="Szukaj kraju…" oninput="ctryCFilter()" style="width:180px">
+            </div>
+          </div>
+          <div class="pb" style="padding:0">
+            <div class="tw">
+              <table><thead><tr id="ctry-head"></tr></thead><tbody id="ctry-body"></tbody></table>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="ph">
+            <span class="pt">Szansa na zwycięstwo — TOP 15 krajów</span>
+          </div>
+          <div class="pb">
+            <div style="position:relative;height:380px"><canvas id="ch-ctry-win"></canvas></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph"><span class="pt">Zwycięstwo vs Medal vs Finał — porównanie krajów</span></div>
+        <div class="pb">
+          <div id="ctry-medal-wrap" style="position:relative;height:340px">
+            <canvas id="ch-ctry-medal"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -393,7 +429,7 @@ function init(){
   renderPodium(); chWin(); chMedal();
   topnSelected=sortedBy().slice(0,3).map(r=>r.Name);
   buildTopnSidebar(); chTopN();
-  buildTable(); buildChips(); buildTimes(); buildPodiums();
+  buildTable(); buildChips(); buildTimes(); buildPodiums(); buildCountries();
 }
 
 // ─── PODIUM ───────────────────────────────────────────
@@ -806,13 +842,154 @@ function buildPodiums(){
   document.getElementById('pod-table-full').innerHTML=hdr+'<tbody>'+PODIUMS.map((p,i)=>mkRow(p,i)).join('')+'</tbody>';
 }
 
+
+// ─── COUNTRIES ────────────────────────────────────────
+let CTRY_DATA = [];  // [{country, iso, win, medal, final, n}]
+let ctryFiltered = null;
+let ctrySortCol = null, ctrySortAsc = true;
+
+function buildCountries(){
+  // Zbierz unikalne kraje
+  const countryMap = {};  // country -> {iso, competitors: [row, ...]}
+  DATA.forEach(r => {
+    const c = r.country || '—';
+    if (!countryMap[c]) countryMap[c] = { iso: r.country_iso || '', rows: [] };
+    countryMap[c].rows.push(r);
+  });
+
+  // Kolumny: szansa na zwycięstwo = CHANCE_COLS[0], medal = CHANCE_COLS[2] (TOP3), finał = CHANCE_COLS wykryte
+  const colWin   = CHANCE_COLS[0];
+  // medal: pierwsza kolumna zawierająca "TOP3" lub "3 msc" lub trzecia kolumna szans
+  const colMedal = CHANCE_COLS.find(c => c === 'TOP3') || CHANCE_COLS[2];
+  // finał: kolumna zawierająca "TOP5" albo "TOP14" albo pierwsza TOP > TOP3
+  const colFinal = CHANCE_COLS.find(c => c === 'TOP5') ||
+                   CHANCE_COLS.find(c => c === 'TOP14') ||
+                   CHANCE_COLS.find(c => c.startsWith('TOP') && c !== 'TOP3') ||
+                   CHANCE_COLS[3];
+
+  CTRY_DATA = Object.entries(countryMap).map(([country, {iso, rows}]) => {
+    // P(przynajmniej jeden) = 1 - prod(1 - p_i)
+    const combine = col => {
+      let prod = 1;
+      rows.forEach(r => { prod *= (1 - (r[col] || 0)); });
+      return 1 - prod;
+    };
+    return {
+      country,
+      iso,
+      n: rows.length,
+      win:   combine(colWin),
+      medal: combine(colMedal),
+      final: combine(colFinal),
+      _colWin: colWin, _colMedal: colMedal, _colFinal: colFinal
+    };
+  }).sort((a, b) => b.win - a.win);
+
+  // Nagłówek tabeli
+  const colFinalLabel = colFinal || '—';
+  document.getElementById('ctry-head').innerHTML = `
+    <th onclick="ctrySort('country')">Kraj</th>
+    <th onclick="ctrySort('n')">Zaw.</th>
+    <th onclick="ctrySort('win')">Zwycięstwo (${colWin})</th>
+    <th onclick="ctrySort('medal')">Medal (${colMedal})</th>
+    <th onclick="ctrySort('final')">Finał (${colFinalLabel})</th>`;
+
+  ctryRender(CTRY_DATA);
+  chCtryWin();
+  chCtryMedal();
+}
+
+function ctryRender(rows){
+  const maxWin   = Math.max(...rows.map(r => r.win));
+  const maxMedal = Math.max(...rows.map(r => r.medal));
+  const maxFinal = Math.max(...rows.map(r => r.final));
+  document.getElementById('ctry-body').innerHTML = rows.map((r, i) => {
+    const barW = (v, mx) => mx > 0 ? Math.round((v/mx)*52) : 0;
+    return `<tr>
+      <td><span style="margin-right:5px">${flagImg(r.iso)}</span><strong>${r.country}</strong></td>
+      <td><span class="mono">${r.n}</span></td>
+      <td><span class="pb-bar" style="width:${barW(r.win,maxWin)}px;background:#ffd700"></span><span class="pv">${pct(r.win)}</span></td>
+      <td><span class="pb-bar" style="width:${barW(r.medal,maxMedal)}px;background:#00e5a0"></span><span class="pv">${pct(r.medal)}</span></td>
+      <td><span class="pb-bar" style="width:${barW(r.final,maxFinal)}px;background:#4a9eff"></span><span class="pv">${pct(r.final)}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function ctryCFilter(){
+  const q = document.getElementById('ctry-search').value.toLowerCase().trim();
+  ctryFiltered = q ? CTRY_DATA.filter(r => r.country.toLowerCase().includes(q)) : null;
+  ctryRender(ctryFiltered || CTRY_DATA);
+}
+
+function ctrySort(col){
+  if(ctrySortCol===col) ctrySortAsc=!ctrySortAsc; else{ctrySortCol=col;ctrySortAsc=col==='country';}
+  const src = ctryFiltered ? [...ctryFiltered] : [...CTRY_DATA];
+  src.sort((a,b)=>{
+    const va=a[col], vb=b[col];
+    if(typeof va==='number') return ctrySortAsc?va-vb:vb-va;
+    return ctrySortAsc?String(va).localeCompare(String(vb)):String(vb).localeCompare(String(va));
+  });
+  // Sync nagłówki
+  document.querySelectorAll('#ctry-head th').forEach(th=>th.classList.remove('sa','sd'));
+  const cols=['country','n','win','medal','final'];
+  const idx=cols.indexOf(col);
+  const ths=[...document.querySelectorAll('#ctry-head th')];
+  if(idx>=0) ths[idx].classList.add(ctrySortAsc?'sa':'sd');
+  ctryRender(src);
+}
+
+function chCtryWin(){
+  const top = [...CTRY_DATA].sort((a,b)=>b.win-a.win).slice(0,15);
+  const labels = top.map(r => r.country);
+  const vals   = top.map(r => parseFloat((r.win*100).toFixed(2)));
+  dc('ctry-win');
+  CH['ctry-win'] = new Chart(document.getElementById('ch-ctry-win'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data: vals,
+      backgroundColor: vals.map((_,i)=>i===0?'#ffd700':i===1?'#c0c0c0':i===2?'#cd7f32':'rgba(0,229,160,0.5)'),
+      borderColor:     vals.map((_,i)=>i===0?'#ffd700':i===1?'#c0c0c0':i===2?'#cd7f32':'rgba(0,229,160,0.8)'),
+      borderWidth:1, borderRadius:4 }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.raw.toFixed(2)}%`}}},
+      scales:{
+        x:{ticks:{color:'#7a8090',font:{size:11},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}},
+        y:{ticks:{color:'#e8eaf0',font:{size:12},autoSkip:false},grid:{color:'rgba(255,255,255,0.03)'}}
+      }}
+  });
+}
+
+function chCtryMedal(){
+  const top = [...CTRY_DATA].sort((a,b)=>b.win-a.win).slice(0,15);
+  const labels = top.map(r => r.country);
+  const h = Math.max(300, top.length * 32 + 60);
+  document.getElementById('ctry-medal-wrap').style.height = h + 'px';
+  dc('ctry-medal');
+  CH['ctry-medal'] = new Chart(document.getElementById('ch-ctry-medal'), {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'Zwycięstwo', data: top.map(r=>parseFloat((r.win*100).toFixed(2))),   backgroundColor:'rgba(255,215,0,0.75)',  borderRadius:3 },
+      { label: 'Medal',      data: top.map(r=>parseFloat((r.medal*100).toFixed(2))), backgroundColor:'rgba(0,229,160,0.6)',   borderRadius:3 },
+      { label: 'Finał',      data: top.map(r=>parseFloat((r.final*100).toFixed(2))), backgroundColor:'rgba(74,158,255,0.55)', borderRadius:3 },
+    ]},
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:true, position:'top', labels:{color:'#7a8090',font:{size:11},boxWidth:10}},
+        tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toFixed(2)}%`}}
+      },
+      scales:{
+        x:{ticks:{color:'#7a8090',font:{size:11},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}},
+        y:{ticks:{color:'#e8eaf0',font:{size:11},autoSkip:false},grid:{color:'rgba(255,255,255,0.03)'}}
+      }}
+  });
+}
+
 // ─── TABS ─────────────────────────────────────────────
 function tab(name){
-  ['overview','table','profiles','times','podiums'].forEach(t=>{
+  ['overview','table','profiles','times','podiums','countries'].forEach(t=>{
     document.getElementById('t-'+t).style.display=t===name?'block':'none';
   });
   document.querySelectorAll('.tab').forEach((el,i)=>{
-    el.classList.toggle('active',['overview','table','profiles','times','podiums'][i]===name);
+    el.classList.toggle('active',['overview','table','profiles','times','podiums','countries'][i]===name);
   });
   if(name==='overview') chMedal();
 }
