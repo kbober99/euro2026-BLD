@@ -849,50 +849,29 @@ let ctryFiltered = null;
 let ctrySortCol = null, ctrySortAsc = true;
 
 function buildCountries(){
-  // Zbierz unikalne kraje
-  const countryMap = {};  // country -> {iso, competitors: [row, ...]}
+  const countryMap = {};
   DATA.forEach(r => {
     const c = r.country || '—';
     if (!countryMap[c]) countryMap[c] = { iso: r.country_iso || '', rows: [] };
     countryMap[c].rows.push(r);
   });
 
-  // Kolumny: szansa na zwycięstwo = CHANCE_COLS[0], medal = CHANCE_COLS[2] (TOP3), finał = CHANCE_COLS wykryte
-  const colWin   = CHANCE_COLS[0];
-  // medal: pierwsza kolumna zawierająca "TOP3" lub "3 msc" lub trzecia kolumna szans
-  const colMedal = CHANCE_COLS.find(c => c === 'TOP3') || CHANCE_COLS[2];
-  // finał: kolumna zawierająca "TOP5" albo "TOP14" albo pierwsza TOP > TOP3
-  const colFinal = CHANCE_COLS.find(c => c === 'TOP5') ||
-                   CHANCE_COLS.find(c => c === 'TOP14') ||
-                   CHANCE_COLS.find(c => c.startsWith('TOP') && c !== 'TOP3') ||
-                   CHANCE_COLS[3];
-
+  // Dla każdego kraju kombinuj każdą kolumnę z CHANCE_COLS: 1 - prod(1 - p_i)
   CTRY_DATA = Object.entries(countryMap).map(([country, {iso, rows}]) => {
-    // P(przynajmniej jeden) = 1 - prod(1 - p_i)
-    const combine = col => {
+    const combined = {};
+    CHANCE_COLS.forEach(col => {
       let prod = 1;
       rows.forEach(r => { prod *= (1 - (r[col] || 0)); });
-      return 1 - prod;
-    };
-    return {
-      country,
-      iso,
-      n: rows.length,
-      win:   combine(colWin),
-      medal: combine(colMedal),
-      final: combine(colFinal),
-      _colWin: colWin, _colMedal: colMedal, _colFinal: colFinal
-    };
-  }).sort((a, b) => b.win - a.win);
+      combined[col] = 1 - prod;
+    });
+    return { country, iso, n: rows.length, ...combined };
+  }).sort((a, b) => (b[CHANCE_COLS[0]] || 0) - (a[CHANCE_COLS[0]] || 0));
 
-  // Nagłówek tabeli
-  const colFinalLabel = colFinal || '—';
-  document.getElementById('ctry-head').innerHTML = `
-    <th onclick="ctrySort('country')">Kraj</th>
-    <th onclick="ctrySort('n')">Zaw.</th>
-    <th onclick="ctrySort('win')">Zwycięstwo (${colWin})</th>
-    <th onclick="ctrySort('medal')">Medal (${colMedal})</th>
-    <th onclick="ctrySort('final')">Finał (${colFinalLabel})</th>`;
+  // Nagłówek — identyczny układ jak Tabela
+  document.getElementById('ctry-head').innerHTML =
+    '<th onclick="ctrySort('country')">Kraj</th>' +
+    '<th onclick="ctrySort('n')">Zaw.</th>' +
+    CHANCE_COLS.map(c => `<th onclick="ctrySort('${c}')">${c}</th>`).join('');
 
   ctryRender(CTRY_DATA);
   chCtryWin();
@@ -900,17 +879,18 @@ function buildCountries(){
 }
 
 function ctryRender(rows){
-  const maxWin   = Math.max(...rows.map(r => r.win));
-  const maxMedal = Math.max(...rows.map(r => r.medal));
-  const maxFinal = Math.max(...rows.map(r => r.final));
+  const maxV = {};
+  CHANCE_COLS.forEach(c => { maxV[c] = Math.max(...rows.map(r => r[c] || 0)); });
   document.getElementById('ctry-body').innerHTML = rows.map((r, i) => {
-    const barW = (v, mx) => mx > 0 ? Math.round((v/mx)*52) : 0;
+    const chanceCells = CHANCE_COLS.map((c, ci) => {
+      const v = r[c] || 0;
+      const w = maxV[c] > 0 ? Math.round((v / maxV[c]) * 52) : 0;
+      return `<td><span class="pb-bar" style="width:${w}px;background:${tcol(c,ci)}"></span><span class="pv">${pct(v)}</span></td>`;
+    }).join('');
     return `<tr>
       <td><span style="margin-right:5px">${flagImg(r.iso)}</span><strong>${r.country}</strong></td>
       <td><span class="mono">${r.n}</span></td>
-      <td><span class="pb-bar" style="width:${barW(r.win,maxWin)}px;background:#ffd700"></span><span class="pv">${pct(r.win)}</span></td>
-      <td><span class="pb-bar" style="width:${barW(r.medal,maxMedal)}px;background:#00e5a0"></span><span class="pv">${pct(r.medal)}</span></td>
-      <td><span class="pb-bar" style="width:${barW(r.final,maxFinal)}px;background:#4a9eff"></span><span class="pv">${pct(r.final)}</span></td>
+      ${chanceCells}
     </tr>`;
   }).join('');
 }
@@ -923,31 +903,30 @@ function ctryCFilter(){
 
 function ctrySort(col){
   if(ctrySortCol===col) ctrySortAsc=!ctrySortAsc; else{ctrySortCol=col;ctrySortAsc=col==='country';}
-  const src = ctryFiltered ? [...ctryFiltered] : [...CTRY_DATA];
-  src.sort((a,b)=>{
+  const rows = ctryFiltered ? [...ctryFiltered] : [...CTRY_DATA];
+  rows.sort((a,b)=>{
     const va=a[col], vb=b[col];
     if(typeof va==='number') return ctrySortAsc?va-vb:vb-va;
     return ctrySortAsc?String(va).localeCompare(String(vb)):String(vb).localeCompare(String(va));
   });
-  // Sync nagłówki
   document.querySelectorAll('#ctry-head th').forEach(th=>th.classList.remove('sa','sd'));
-  const cols=['country','n','win','medal','final'];
+  const cols=['country','n',...CHANCE_COLS];
   const idx=cols.indexOf(col);
   const ths=[...document.querySelectorAll('#ctry-head th')];
   if(idx>=0) ths[idx].classList.add(ctrySortAsc?'sa':'sd');
-  ctryRender(src);
+  ctryRender(rows);
 }
 
 function chCtryWin(){
-  const top = [...CTRY_DATA].sort((a,b)=>b.win-a.win).slice(0,15);
+  const top = [...CTRY_DATA].sort((a,b)=>(b[CHANCE_COLS[0]]||0)-(a[CHANCE_COLS[0]]||0)).slice(0,15);
   const labels = top.map(r => r.country);
-  const vals   = top.map(r => parseFloat((r.win*100).toFixed(2)));
+  const vals   = top.map(r => parseFloat(((r[CHANCE_COLS[0]]||0)*100).toFixed(2)));
   dc('ctry-win');
   CH['ctry-win'] = new Chart(document.getElementById('ch-ctry-win'), {
     type: 'bar',
     data: { labels, datasets: [{ data: vals,
       backgroundColor: vals.map((_,i)=>i===0?'#ffd700':i===1?'#c0c0c0':i===2?'#cd7f32':'rgba(0,229,160,0.5)'),
-      borderColor:     vals.map((_,i)=>i===0?'#ffd700':i===1?'#c0c0c0':i===2?'#cd7f32':'rgba(0,229,160,0.8)'),
+      borderColor:vals.map((_,i)=>i===0?'#ffd700':i===1?'#c0c0c0':i===2?'#cd7f32':'rgba(0,229,160,0.8)'),
       borderWidth:1, borderRadius:4 }] },
     options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
       plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.raw.toFixed(2)}%`}}},
@@ -959,18 +938,24 @@ function chCtryWin(){
 }
 
 function chCtryMedal(){
-  const top = [...CTRY_DATA].sort((a,b)=>b.win-a.win).slice(0,15);
+  const top = [...CTRY_DATA].sort((a,b)=>(b[CHANCE_COLS[0]]||0)-(a[CHANCE_COLS[0]]||0)).slice(0,15);
   const labels = top.map(r => r.country);
   const h = Math.max(300, top.length * 32 + 60);
   document.getElementById('ctry-medal-wrap').style.height = h + 'px';
   dc('ctry-medal');
   CH['ctry-medal'] = new Chart(document.getElementById('ch-ctry-medal'), {
     type: 'bar',
-    data: { labels, datasets: [
-      { label: 'Zwycięstwo', data: top.map(r=>parseFloat((r.win*100).toFixed(2))),   backgroundColor:'rgba(255,215,0,0.75)',  borderRadius:3 },
-      { label: 'Medal',      data: top.map(r=>parseFloat((r.medal*100).toFixed(2))), backgroundColor:'rgba(0,229,160,0.6)',   borderRadius:3 },
-      { label: 'Finał',      data: top.map(r=>parseFloat((r.final*100).toFixed(2))), backgroundColor:'rgba(74,158,255,0.55)', borderRadius:3 },
-    ]},
+    data: { labels, datasets: CHANCE_COLS.map((col, ci) => ({
+      label: col,
+      data: top.map(r => parseFloat(((r[col]||0)*100).toFixed(2))),
+      backgroundColor: [
+        'rgba(255,215,0,0.75)','rgba(192,192,192,0.65)','rgba(205,127,50,0.65)',
+        'rgba(0,229,160,0.55)','rgba(74,158,255,0.55)','rgba(255,107,53,0.55)',
+        'rgba(167,139,250,0.55)','rgba(52,211,153,0.55)','rgba(244,114,182,0.55)',
+        'rgba(56,189,248,0.55)','rgba(251,146,60,0.55)','rgba(134,239,172,0.55)'
+      ][ci] || 'rgba(0,229,160,0.4)',
+      borderRadius: 3
+    }))},
     options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
       plugins:{
         legend:{display:true, position:'top', labels:{color:'#7a8090',font:{size:11},boxWidth:10}},
