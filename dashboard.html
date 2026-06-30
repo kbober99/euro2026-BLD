@@ -389,10 +389,12 @@ async function boot(){
     init();
   }catch(e){
     const ls=document.getElementById('loading-screen');
-    ls.querySelector('.spinner').style.display='none';
-    document.getElementById('loading-msg').textContent='';
-    ls.innerHTML+=`<h2>Nie można załadować danych</h2><p>${e.message}</p>
+    const sp=ls.querySelector('.spinner');
+    if(sp) sp.style.display='none';
+    ls.innerHTML=`<h2 style="font-family:var(--mono);color:#ff6b6b">Błąd ładowania</h2>
+      <p style="color:var(--muted);font-family:var(--mono);font-size:13px">${e.message}</p>
       <p style="margin-top:12px"><a href="index.html" style="color:var(--accent);font-family:var(--mono);font-size:13px">← Wróć do listy eventów</a></p>`;
+    console.error(e);
   }
 }
 
@@ -864,7 +866,7 @@ function buildCountries(){
       rows.forEach(r => { prod *= (1 - (r[col] || 0)); });
       combined[col] = 1 - prod;
     });
-    return { country, iso, n: rows.length, ...combined };
+    return Object.assign({ country, iso, n: rows.length }, combined);
   }).sort((a, b) => (b[CHANCE_COLS[0]] || 0) - (a[CHANCE_COLS[0]] || 0));
 
   // Nagłówek — identyczny układ jak Tabela
