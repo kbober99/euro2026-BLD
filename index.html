@@ -109,7 +109,7 @@ async function init(){
   EVENTS.forEach((ev,i)=>{
     const ready=checks[i];
     const card=document.createElement(ready?'a':'div');
-    if(ready) card.href=`dashboard.html?event=${ev.id}`;
+    if(ready) card.href=`dashboard2.html?event=${ev.id}`;
     card.className='event-card'+(ready?'':' no-data');
     card.style.setProperty('--card-color', ev.color);
     card.innerHTML=`
