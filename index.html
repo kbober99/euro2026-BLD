@@ -544,7 +544,7 @@ async function fetchEventData(ev){
     var r = await fetch(ev.id+'.json?v='+Date.now(), {cache:'no-cache'});
     if(!r.ok) return null;
     var raw = await r.text();
-    var san = raw.replace(/:\s*NaN\b/g,': null').replace(/,\s*NaN\b/g,', null');
+    var san = raw.replace(/:\s*NaN\b/g,': null').replace(/,\s*NaN\b/g,', null').replace(/\[\s*NaN\b/g,'[null').replace(/\bNaN\b/g,'null');
     var d = JSON.parse(san);
     if(!d.chances || !d.chances.length) return null;
     return { id: ev.id, name: ev.name, chances: d.chances };
