@@ -266,22 +266,9 @@ function mTab(name){
 }
 
 // ─── FETCH ALL AVAILABLE JSONs ────────────────────────
-async function fetchEvent(ev){
-  try{
-    var r = await fetch(ev.id+'.json?v='+Date.now(), {cache:'no-cache'});
-    if(!r.ok) return null;
-    var raw = await r.text();
-    var san = raw.replace(/:\s*NaN\b/g,': null').replace(/,\s*NaN\b/g,', null');
-    var d = JSON.parse(san);
-    return { id: ev.id, name: ev.name, chances: d.chances || [] };
-  }catch(e){ return null; }
-}
-
-async function loadMedalStandings(availableIds){
-  // Pobierz równolegle tylko dostępne eventy
-  var available = EVENTS.filter(function(e){ return availableIds.indexOf(e.id) >= 0; });
-  var results = await Promise.all(available.map(function(ev){ return fetchEvent(ev); }));
-  var loaded = results.filter(function(r){ return r !== null && r.chances.length > 0; });
+async function loadMedalStandings(loadedEvents){
+  // Przyjmuje już pobrane dane — nie robi dodatkowych fetchów
+  var loaded = loadedEvents;
   LOADED_EVENTS = loaded;  // zapisz globalnie dla widoku kraju
 
   if(!loaded.length){
@@ -460,7 +447,6 @@ function showCountryDetail(country){
       var p = sorted[rank];
       if(!p) return;
       if(p.country !== country) return;
-      var pChances = ev.chances.find(function(c){ return c.Name === p.Name; });
       var obj = {
         name: p.Name,
         evName: ev.name,
@@ -472,6 +458,11 @@ function showCountryDetail(country){
       if(rank===2) bronzeList.push(obj);
     });
   });
+
+  // Sortuj każdą listę malejąco po szansie na medal
+  goldList.sort(function(a,b){ return b.medalPct - a.medalPct; });
+  silverList.sort(function(a,b){ return b.medalPct - a.medalPct; });
+  bronzeList.sort(function(a,b){ return b.medalPct - a.medalPct; });
 
   function makeList(list, medalClass, label){
     if(!list.length) return '<p style="color:var(--muted);font-size:12px;font-family:var(--mono)">Brak</p>';
@@ -547,21 +538,32 @@ function mSort(tab, col){
 }
 
 // ─── INIT ─────────────────────────────────────────────
-async function checkFile(id){
+async function fetchEventData(ev){
+  // Pobiera plik JSON eventu — używane do sprawdzenia dostępności I do medali
   try{
-    var r = await fetch(id+'.json?v='+Date.now(), {method:'GET', cache:'no-cache'});
-    return r.ok;
-  }catch(e){ return false; }
+    var r = await fetch(ev.id+'.json?v='+Date.now(), {cache:'no-cache'});
+    if(!r.ok) return null;
+    var raw = await r.text();
+    var san = raw.replace(/:\s*NaN\b/g,': null').replace(/,\s*NaN\b/g,', null');
+    var d = JSON.parse(san);
+    if(!d.chances || !d.chances.length) return null;
+    return { id: ev.id, name: ev.name, chances: d.chances };
+  }catch(e){ return null; }
 }
 
 async function init(){
   var grid = document.getElementById('events-grid');
-  var checks = await Promise.all(EVENTS.map(function(e){ return checkFile(e.id); }));
-  var availableIds = [];
+
+  // Pobierz wszystkie eventy równolegle — jeden fetch na event
+  var results = await Promise.all(EVENTS.map(function(ev){ return fetchEventData(ev); }));
+
+  var loadedEvents = [];
 
   EVENTS.forEach(function(ev, i){
-    var ready = checks[i];
-    if(ready) availableIds.push(ev.id);
+    var data = results[i];
+    var ready = data !== null;
+    if(ready) loadedEvents.push(data);
+
     var card = document.createElement(ready ? 'a' : 'div');
     if(ready) card.href = 'dashboard.html?event='+ev.id;
     card.className = 'event-card' + (ready ? '' : ' no-data');
@@ -576,8 +578,8 @@ async function init(){
     grid.appendChild(card);
   });
 
-  // Załaduj klasyfikację medalową ze wszystkich dostępnych eventów
-  await loadMedalStandings(availableIds);
+  // Załaduj klasyfikację medalową z już pobranych danych
+  await loadMedalStandings(loadedEvents);
 }
 
 init();
