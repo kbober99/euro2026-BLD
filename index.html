@@ -99,6 +99,15 @@ tbody td{padding:8px 12px}
 .event-status.soon{color:var(--muted)}
 .event-status.soon::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--muted);display:inline-block}
 
+/* COLORED EVENT TAGS */
+.ev-tag-gold{background:rgba(255,215,0,0.15);border-color:rgba(255,215,0,0.35);color:var(--gold)}
+.ev-tag-silver{background:rgba(192,192,192,0.12);border-color:rgba(192,192,192,0.3);color:var(--silver)}
+.ev-tag-bronze{background:rgba(205,127,50,0.12);border-color:rgba(205,127,50,0.3);color:var(--bronze)}
+.gold-label{color:var(--gold)}
+.silver-label{color:var(--silver)}
+.bronze-label{color:var(--bronze)}
+@media(max-width:700px){#country-detail .grid-cols{grid-template-columns:1fr!important}}
+
 footer{text-align:center;padding:24px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:40px;font-family:var(--mono)}
 </style>
 </head>
@@ -168,6 +177,7 @@ footer{text-align:center;padding:24px;color:var(--muted);font-size:12px;border-t
             <tbody id="countries-body"></tbody>
           </table>
         </div>
+        <div id="country-detail" style="display:none;margin-top:16px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:18px"></div>
       </div>
 
     </div>
@@ -234,6 +244,7 @@ function getFlag(country, country_iso){
 // ─── STATE ────────────────────────────────────────────
 var PLAYER_ROWS = [];   // [{name, country, country_iso, gold, silver, bronze, total, sigma, events:[]}]
 var COUNTRY_ROWS = [];  // [{country, country_iso, gold, silver, bronze, total, sigma}]
+var LOADED_EVENTS = []; // surowe dane załadowanych eventów
 var mSortCol = { players: 'gold', countries: 'gold' };
 var mSortAsc = { players: false, countries: false };
 var medalCardOpen = false;
@@ -271,6 +282,7 @@ async function loadMedalStandings(availableIds){
   var available = EVENTS.filter(function(e){ return availableIds.indexOf(e.id) >= 0; });
   var results = await Promise.all(available.map(function(ev){ return fetchEvent(ev); }));
   var loaded = results.filter(function(r){ return r !== null && r.chances.length > 0; });
+  LOADED_EVENTS = loaded;  // zapisz globalnie dla widoku kraju
 
   if(!loaded.length){
     document.getElementById('medal-card-sub').textContent = 'Brak dostępnych danych';
@@ -307,13 +319,14 @@ async function loadMedalStandings(availableIds){
           country: p.country || '—',
           country_iso: p.country_iso || COUNTRY_ISO[p.country||''] || '',
           gold: 0, silver: 0, bronze: 0, sigma: 0,
-          events: []
+          events: [], eventMedals: []
         };
       }
       if(rank===0) playerMap[name].gold++;
       if(rank===1) playerMap[name].silver++;
       if(rank===2) playerMap[name].bronze++;
       playerMap[name].events.push(ev.name);
+      playerMap[name].eventMedals.push({ name: ev.name, medal: rank, id: ev.id });
     });
 
     // Sigma p(medal) dla wszystkich zawodników
@@ -325,7 +338,7 @@ async function loadMedalStandings(availableIds){
           country: p.country || '—',
           country_iso: p.country_iso || COUNTRY_ISO[p.country||''] || '',
           gold: 0, silver: 0, bronze: 0, sigma: 0,
-          events: []
+          events: [], eventMedals: []
         };
       }
       playerMap[name].sigma += (p[medalCol] || 0);
@@ -382,8 +395,9 @@ async function loadMedalStandings(availableIds){
 // ─── RENDER PLAYERS ───────────────────────────────────
 function renderPlayers(rows){
   document.getElementById('players-body').innerHTML = rows.map(function(p, i){
-    var evTags = p.events.map(function(e){
-      return '<span class="ev-tag">'+e+'</span>';
+    var evTags = p.eventMedals.map(function(em){
+      var cls = em.medal===0 ? 'ev-tag-gold' : em.medal===1 ? 'ev-tag-silver' : 'ev-tag-bronze';
+      return '<span class="ev-tag '+cls+'">'+em.name+'</span>';
     }).join('');
     return '<tr>'+
       '<td><span class="mono">'+(i+1)+'</span></td>'+
@@ -401,9 +415,9 @@ function renderPlayers(rows){
 // ─── RENDER COUNTRIES ─────────────────────────────────
 function renderCountries(rows){
   document.getElementById('countries-body').innerHTML = rows.map(function(c, i){
-    return '<tr>'+
+    return '<tr class="ctry-row" data-country="'+i+'" style="cursor:pointer">'+
       '<td><span class="mono">'+(i+1)+'</span></td>'+
-      '<td>'+getFlag(c.country, c.country_iso)+'<strong>'+c.country+'</strong></td>'+
+      '<td>'+getFlag(c.country, c.country_iso)+'<strong>'+c.country+'</strong> <span style="color:var(--muted);font-size:11px;font-family:var(--mono)">↗</span></td>'+
       '<td><span class="medal-dot gold-dot">'+c.gold+'</span></td>'+
       '<td><span class="medal-dot silver-dot">'+c.silver+'</span></td>'+
       '<td><span class="medal-dot bronze-dot">'+c.bronze+'</span></td>'+
@@ -411,6 +425,99 @@ function renderCountries(rows){
       '<td><span class="sigma-val">'+c.sigma.toFixed(2)+'</span></td>'+
     '</tr>';
   }).join('');
+
+  // Podpnij eventy przez addEventListener — bezpieczne dla każdej nazwy kraju
+  document.querySelectorAll('.ctry-row').forEach(function(tr){
+    tr.addEventListener('click', function(){
+      var idx = parseInt(tr.getAttribute('data-country'));
+      showCountryDetail(rows[idx].country);
+    });
+  });
+}
+
+function showCountryDetail(country){
+  // Zbierz zawodników z tego kraju
+  var players = PLAYER_ROWS.filter(function(p){ return p.country === country; });
+  if(!players.length) return;
+
+  var ctryRow = COUNTRY_ROWS.find(function(c){ return c.country === country; });
+  var iso = ctryRow ? ctryRow.country_iso : '';
+
+  // Dla każdego eventu zbierz szanse medalowe zawodników z tego kraju
+  var goldList = [], silverList = [], bronzeList = [];
+
+  LOADED_EVENTS.forEach(function(ev){
+    var skip = new Set(['Name','flag','country','country_iso','median_place','best_place']);
+    var cols = Object.keys(ev.chances[0] || {}).filter(function(c){
+      return c !== 'Name' && !skip.has(c) && typeof ev.chances[0][c] === 'number';
+    });
+    if(!cols.length) return;
+    var medalCol = cols.find(function(c){ return c==='TOP3'; }) || cols[2] || cols[0];
+
+    var sorted = ev.chances.slice().sort(function(a,b){ return (b[cols[0]]||0)-(a[cols[0]]||0); });
+
+    [0,1,2].forEach(function(rank){
+      var p = sorted[rank];
+      if(!p) return;
+      if(p.country !== country) return;
+      var pChances = ev.chances.find(function(c){ return c.Name === p.Name; });
+      var obj = {
+        name: p.Name,
+        evName: ev.name,
+        winPct: (p[cols[0]]||0)*100,
+        medalPct: (p[medalCol]||0)*100
+      };
+      if(rank===0) goldList.push(obj);
+      if(rank===1) silverList.push(obj);
+      if(rank===2) bronzeList.push(obj);
+    });
+  });
+
+  function makeList(list, medalClass, label){
+    if(!list.length) return '<p style="color:var(--muted);font-size:12px;font-family:var(--mono)">Brak</p>';
+    return list.map(function(item){
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">'+
+        '<div>'+
+          '<div style="font-size:13px;font-weight:600">'+item.name+'</div>'+
+          '<div style="font-size:11px;color:var(--muted);font-family:var(--mono)">'+item.evName+'</div>'+
+        '</div>'+
+        '<div style="text-align:right">'+
+          '<div class="'+medalClass+'" style="font-family:var(--mono);font-size:12px">'+label+' '+item.winPct.toFixed(2)+'%</div>'+
+          '<div style="font-size:11px;color:var(--muted);font-family:var(--mono)">p(medal): '+item.medalPct.toFixed(2)+'%</div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  }
+
+  var html =
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">'+
+      getFlag(country, iso)+
+      '<span style="font-family:var(--mono);font-size:15px;font-weight:700">'+country+'</span>'+
+      '<button onclick="closeCountryDetail()" style="margin-left:auto;background:transparent;border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer">✕ Zamknij</button>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">'+
+      '<div>'+
+        '<div style="font-family:var(--mono);font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">🥇 Złote medale</div>'+
+        makeList(goldList, 'gold-label', '🥇')+
+      '</div>'+
+      '<div>'+
+        '<div style="font-family:var(--mono);font-size:11px;color:var(--silver);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">🥈 Srebrne medale</div>'+
+        makeList(silverList, 'silver-label', '🥈')+
+      '</div>'+
+      '<div>'+
+        '<div style="font-family:var(--mono);font-size:11px;color:var(--bronze);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">🥉 Brązowe medale</div>'+
+        makeList(bronzeList, 'bronze-label', '🥉')+
+      '</div>'+
+    '</div>';
+
+  var panel = document.getElementById('country-detail');
+  panel.innerHTML = html;
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeCountryDetail(){
+  document.getElementById('country-detail').style.display = 'none';
 }
 
 // ─── SORT ─────────────────────────────────────────────
