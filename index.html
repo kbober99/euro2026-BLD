@@ -12,6 +12,7 @@
   --bg:#0a0c10;--bg2:#11141a;--bg3:#181c25;
   --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
   --text:#e8eaf0;--muted:#7a8090;--accent:#00e5a0;
+  --gold:#ffd700;--silver:#c0c0c0;--bronze:#cd7f32;
   --mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif;
 }
 body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
@@ -21,36 +22,78 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .header h1 span{color:var(--text)}
 .header p{color:var(--muted);font-size:13px}
 
-.main{padding:40px;max-width:1200px;margin:0 auto}
-
+.main{padding:40px;max-width:1300px;margin:0 auto}
 .section-title{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:16px}
 
-/* EVENT GRID */
-.events-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:40px}
+/* MEDAL CARD — wyróżniona karta na górze */
+.medal-card{
+  background:var(--bg2);border:1px solid rgba(255,215,0,0.2);border-radius:16px;
+  padding:0;margin-bottom:32px;overflow:hidden;cursor:pointer;
+  transition:all 0.18s;position:relative;
+}
+.medal-card:hover{border-color:rgba(255,215,0,0.45);box-shadow:0 8px 32px rgba(255,215,0,0.08);transform:translateY(-1px)}
+.medal-card-header{
+  padding:20px 24px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);gap:16px;flex-wrap:wrap;
+}
+.medal-card-header-left{display:flex;align-items:center;gap:14px}
+.medal-card-icon{font-size:28px}
+.medal-card-title{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--gold)}
+.medal-card-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.medal-card-toggle{
+  font-family:var(--mono);font-size:11px;color:var(--muted);
+  border:1px solid var(--border2);padding:5px 12px;border-radius:6px;
+  transition:all 0.15s;white-space:nowrap;
+}
+.medal-card:hover .medal-card-toggle{color:var(--text)}
+.medal-card-body{padding:20px 24px;display:none}
+.medal-card-body.open{display:block}
 
+/* TABS inside medal card */
+.m-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:18px}
+.m-tab{padding:8px 16px;font-size:13px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap}
+.m-tab:hover{color:var(--text)}
+.m-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+
+/* TABLE shared */
+.tw{overflow-x:auto;max-height:480px;overflow-y:auto}
+.tw::-webkit-scrollbar{width:4px}
+.tw::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{text-align:left;padding:8px 12px;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:1px solid var(--border);cursor:pointer;white-space:nowrap;user-select:none;position:sticky;top:0;background:var(--bg2);z-index:1}
+thead th:hover{color:var(--text)}
+thead th.sa::after{content:' ↑';color:var(--gold)}
+thead th.sd::after{content:' ↓';color:var(--gold)}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,0.03)}
+tbody td{padding:8px 12px}
+.mono{font-family:var(--mono);font-size:12px}
+.medal-dot{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;font-family:var(--mono);font-size:11px;font-weight:700}
+.gold-dot{background:rgba(255,215,0,0.15);color:var(--gold);border:1px solid rgba(255,215,0,0.3)}
+.silver-dot{background:rgba(192,192,192,0.12);color:var(--silver);border:1px solid rgba(192,192,192,0.25)}
+.bronze-dot{background:rgba(205,127,50,0.12);color:var(--bronze);border:1px solid rgba(205,127,50,0.25)}
+.sigma-val{font-family:var(--mono);font-size:12px;color:var(--accent)}
+.loading-inline{color:var(--muted);font-family:var(--mono);font-size:12px;padding:20px 0;text-align:center}
+.ev-tag{display:inline-block;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;font-family:var(--mono);font-size:10px;padding:1px 6px;color:var(--muted);margin:1px}
+
+/* EVENTS GRID */
+.events-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:40px}
 .event-card{
   background:var(--bg2);border:1px solid var(--border);border-radius:12px;
   padding:20px 18px;cursor:pointer;transition:all 0.18s;text-decoration:none;
   display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden;
 }
-.event-card::before{
-  content:'';position:absolute;inset:0;border-radius:12px;
-  background:linear-gradient(135deg,var(--card-color,#00e5a0) 0%,transparent 60%);
-  opacity:0;transition:opacity 0.18s;
-}
+.event-card::before{content:'';position:absolute;inset:0;border-radius:12px;background:linear-gradient(135deg,var(--card-color,#00e5a0) 0%,transparent 60%);opacity:0;transition:opacity 0.18s}
 .event-card:hover{border-color:var(--card-color,var(--accent));transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.3)}
 .event-card:hover::before{opacity:0.05}
 .event-card.no-data{cursor:default;opacity:0.45}
 .event-card.no-data:hover{transform:none;border-color:var(--border)}
 .event-card.no-data::before{display:none}
-
 .event-icon{font-size:28px;line-height:1}
 .event-name{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)}
-.event-id{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
-.event-status{
-  display:inline-flex;align-items:center;gap:5px;
-  font-size:11px;font-family:var(--mono);margin-top:2px;
-}
+.event-id{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.event-status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);margin-top:2px}
 .event-status.ready{color:var(--accent)}
 .event-status.ready::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block}
 .event-status.soon{color:var(--muted)}
@@ -67,6 +110,70 @@ footer{text-align:center;padding:24px;color:var(--muted);font-size:12px;border-t
 </div>
 
 <div class="main">
+
+  <!-- MEDAL STANDINGS CARD -->
+  <div class="medal-card" id="medal-card">
+    <div class="medal-card-header" onclick="toggleMedalCard()">
+      <div class="medal-card-header-left">
+        <div class="medal-card-icon">🏅</div>
+        <div>
+          <div class="medal-card-title">Klasyfikacja medalowa</div>
+          <div class="medal-card-sub" id="medal-card-sub">Ładowanie danych ze wszystkich eventów…</div>
+        </div>
+      </div>
+      <div class="medal-card-toggle" id="medal-toggle-btn">Rozwiń ↓</div>
+    </div>
+    <div class="medal-card-body" id="medal-body">
+      <div class="m-tabs">
+        <div class="m-tab active" onclick="mTab('players')">Zawodnicy</div>
+        <div class="m-tab" onclick="mTab('countries')">Kraje</div>
+      </div>
+
+      <!-- PLAYERS TAB -->
+      <div id="m-players">
+        <div class="tw">
+          <table>
+            <thead>
+              <tr>
+                <th onclick="mSort('players','rank')">#</th>
+                <th onclick="mSort('players','name')">Zawodnik</th>
+                <th onclick="mSort('players','gold')">🥇 Złote</th>
+                <th onclick="mSort('players','silver')">🥈 Srebrne</th>
+                <th onclick="mSort('players','bronze')">🥉 Brązowe</th>
+                <th onclick="mSort('players','total')">Razem</th>
+                <th onclick="mSort('players','sigma')">Σ p(medal)</th>
+                <th>Eventy</th>
+              </tr>
+            </thead>
+            <tbody id="players-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- COUNTRIES TAB -->
+      <div id="m-countries" style="display:none">
+        <div class="tw">
+          <table>
+            <thead>
+              <tr>
+                <th onclick="mSort('countries','rank')">#</th>
+                <th onclick="mSort('countries','country')">Kraj</th>
+                <th onclick="mSort('countries','gold')">🥇 Złote</th>
+                <th onclick="mSort('countries','silver')">🥈 Srebrne</th>
+                <th onclick="mSort('countries','bronze')">🥉 Brązowe</th>
+                <th onclick="mSort('countries','total')">Razem</th>
+                <th onclick="mSort('countries','sigma')">Σ p(medal)</th>
+              </tr>
+            </thead>
+            <tbody id="countries-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- EVENT GRID -->
   <div class="section-title">Wybierz konkurencję</div>
   <div class="events-grid" id="events-grid"></div>
 </div>
@@ -75,52 +182,295 @@ footer{text-align:center;padding:24px;color:var(--muted);font-size:12px;border-t
 
 <script>
 const EVENTS = [
-  { id:'333',    name:'3x3x3',                    icon:'🟧', color:'#ff6b35' },
-  { id:'222',    name:'2x2x2',                    icon:'🟦', color:'#4a9eff' },
-  { id:'444',    name:'4x4x4',                    icon:'🟩', color:'#00e5a0' },
-  { id:'555',    name:'5x5x5',                    icon:'🟥', color:'#ff4d4d' },
-  { id:'666',    name:'6x6x6',                    icon:'🟨', color:'#ffd700' },
-  { id:'777',    name:'7x7x7',                    icon:'🟪', color:'#a78bfa' },
-  { id:'333bf',  name:'3x3x3 Bez Patrzenia',      icon:'👁️', color:'#00e5a0' },
-  { id:'333fm',  name:'3x3x3 Najmniej Ruchów',    icon:'✏️', color:'#f472b6' },
-  { id:'333oh',  name:'3x3x3 Jedną Ręką',         icon:'🤚', color:'#fb923c' },
-  { id:'clock',  name:'Zegar',                    icon:'🕐', color:'#38bdf8' },
-  { id:'minx',   name:'Megaminx',                 icon:'⭐', color:'#fbbf24' },
-  { id:'pyram',  name:'Pyraminx',                 icon:'🔺', color:'#34d399' },
-  { id:'skewb',  name:'Skewb',                    icon:'💠', color:'#818cf8' },
-  { id:'sq1',    name:'Square-1',                 icon:'🔷', color:'#60a5fa' },
-  { id:'444bf',  name:'4x4x4 Bez Patrzenia',      icon:'👁️', color:'#c084fc' },
-  { id:'555bf',  name:'5x5x5 Bez Patrzenia',      icon:'👁️', color:'#e879f9' },
-  { id:'333mbf', name:'3x3x3 Multi Bez Patrzenia',icon:'👁️', color:'#f43f5e' },
+  { id:'333',    name:'3x3x3',                     icon:'🟧', color:'#ff6b35' },
+  { id:'222',    name:'2x2x2',                     icon:'🟦', color:'#4a9eff' },
+  { id:'444',    name:'4x4x4',                     icon:'🟩', color:'#00e5a0' },
+  { id:'555',    name:'5x5x5',                     icon:'🟥', color:'#ff4d4d' },
+  { id:'666',    name:'6x6x6',                     icon:'🟨', color:'#ffd700' },
+  { id:'777',    name:'7x7x7',                     icon:'🟪', color:'#a78bfa' },
+  { id:'333bf',  name:'3x3x3 Bez Patrzenia',       icon:'👁️', color:'#00e5a0' },
+  { id:'333fm',  name:'3x3x3 Najmniej Ruchów',     icon:'✏️', color:'#f472b6' },
+  { id:'333oh',  name:'3x3x3 Jedną Ręką',          icon:'🤚', color:'#fb923c' },
+  { id:'clock',  name:'Zegar',                     icon:'🕐', color:'#38bdf8' },
+  { id:'minx',   name:'Megaminx',                  icon:'⭐', color:'#fbbf24' },
+  { id:'pyram',  name:'Pyraminx',                  icon:'🔺', color:'#34d399' },
+  { id:'skewb',  name:'Skewb',                     icon:'💠', color:'#818cf8' },
+  { id:'sq1',    name:'Square-1',                  icon:'🔷', color:'#60a5fa' },
+  { id:'444bf',  name:'4x4x4 Bez Patrzenia',       icon:'👁️', color:'#c084fc' },
+  { id:'555bf',  name:'5x5x5 Bez Patrzenia',       icon:'👁️', color:'#e879f9' },
+  { id:'333mbf', name:'3x3x3 Multi Bez Patrzenia', icon:'👁️', color:'#f43f5e' },
 ];
 
+// ─── FLAG ─────────────────────────────────────────────
+const COUNTRY_ISO={
+  'Polska':'pl','Niemcy':'de','Francja':'fr','Wielka Brytania':'gb','Anglia':'gb',
+  'Hiszpania':'es','Włochy':'it','Holandia':'nl','Belgia':'be','Szwecja':'se',
+  'Norwegia':'no','Dania':'dk','Finlandia':'fi','Austria':'at','Szwajcaria':'ch',
+  'Czechy':'cz','Słowacja':'sk','Węgry':'hu','Rumunia':'ro','Bułgaria':'bg',
+  'Chorwacja':'hr','Serbia':'rs','Słowenia':'si','Grecja':'gr','Portugalia':'pt',
+  'Ukraina':'ua','Rosja':'ru','Białoruś':'by','Litwa':'lt','Łotwa':'lv',
+  'Estonia':'ee','Irlandia':'ie','Islandia':'is','Luksemburg':'lu','Malta':'mt',
+  'Cypr':'cy','Turcja':'tr','Izrael':'il','Maroko':'ma','Mołdawia':'md',
+  'Albania':'al','Kosowo':'xk','Czarnogóra':'me','Macedonia Północna':'mk',
+  'Bośnia i Hercegowina':'ba',
+  'Poland':'pl','Germany':'de','France':'fr','United Kingdom':'gb','Spain':'es',
+  'Italy':'it','Netherlands':'nl','Belgium':'be','Sweden':'se','Norway':'no',
+  'Denmark':'dk','Finland':'fi','Switzerland':'ch','Czech Republic':'cz','Czechia':'cz',
+  'Slovakia':'sk','Hungary':'hu','Romania':'ro','Bulgaria':'bg','Croatia':'hr',
+  'Slovenia':'si','Greece':'gr','Portugal':'pt','Ukraine':'ua','Russia':'ru',
+  'Belarus':'by','Lithuania':'lt','Latvia':'lv','Estonia':'ee','Ireland':'ie',
+  'Iceland':'is','Luxembourg':'lu','Cyprus':'cy','Turkey':'tr','Israel':'il',
+  'Morocco':'ma','Moldova':'md','Serbia':'rs','Austria':'at',
+};
+function flagImg(iso){
+  if(!iso) return '';
+  return '<img src="https://flagcdn.com/16x12/'+iso+'.png" width="16" height="12" style="vertical-align:middle;margin-right:5px;border-radius:1px">';
+}
+function getFlag(country, country_iso){
+  var iso = country_iso || COUNTRY_ISO[country] || '';
+  return flagImg(iso);
+}
+
+// ─── STATE ────────────────────────────────────────────
+var PLAYER_ROWS = [];   // [{name, country, country_iso, gold, silver, bronze, total, sigma, events:[]}]
+var COUNTRY_ROWS = [];  // [{country, country_iso, gold, silver, bronze, total, sigma}]
+var mSortCol = { players: 'gold', countries: 'gold' };
+var mSortAsc = { players: false, countries: false };
+var medalCardOpen = false;
+
+// ─── TOGGLE ───────────────────────────────────────────
+function toggleMedalCard(){
+  medalCardOpen = !medalCardOpen;
+  document.getElementById('medal-body').className = 'medal-card-body' + (medalCardOpen ? ' open' : '');
+  document.getElementById('medal-toggle-btn').textContent = medalCardOpen ? 'Zwiń ↑' : 'Rozwiń ↓';
+}
+
+// ─── TABS ─────────────────────────────────────────────
+function mTab(name){
+  document.getElementById('m-players').style.display  = name==='players'  ? 'block' : 'none';
+  document.getElementById('m-countries').style.display = name==='countries' ? 'block' : 'none';
+  document.querySelectorAll('.m-tab').forEach(function(el, i){
+    el.classList.toggle('active', ['players','countries'][i] === name);
+  });
+}
+
+// ─── FETCH ALL AVAILABLE JSONs ────────────────────────
+async function fetchEvent(ev){
+  try{
+    var r = await fetch(ev.id+'.json?v='+Date.now(), {cache:'no-cache'});
+    if(!r.ok) return null;
+    var raw = await r.text();
+    var san = raw.replace(/:\s*NaN\b/g,': null').replace(/,\s*NaN\b/g,', null');
+    var d = JSON.parse(san);
+    return { id: ev.id, name: ev.name, chances: d.chances || [] };
+  }catch(e){ return null; }
+}
+
+async function loadMedalStandings(availableIds){
+  // Pobierz równolegle tylko dostępne eventy
+  var available = EVENTS.filter(function(e){ return availableIds.indexOf(e.id) >= 0; });
+  var results = await Promise.all(available.map(function(ev){ return fetchEvent(ev); }));
+  var loaded = results.filter(function(r){ return r !== null && r.chances.length > 0; });
+
+  if(!loaded.length){
+    document.getElementById('medal-card-sub').textContent = 'Brak dostępnych danych';
+    return;
+  }
+
+  // ── Zbierz dane na zawodnika ───────────────────────
+  var playerMap = {};  // name -> {country, country_iso, gold, silver, bronze, sigma, events}
+
+  loaded.forEach(function(ev){
+    var chances = ev.chances;
+    // Sortuj po pierwszej kolumnie numerycznej (1 msc / podobna)
+    var skip = new Set(['Name','flag','country','country_iso','median_place','best_place']);
+    var cols = Object.keys(chances[0] || {}).filter(function(c){
+      return c !== 'Name' && !skip.has(c) && typeof chances[0][c] === 'number';
+    });
+    if(!cols.length) return;
+
+    // TOP1, TOP2, TOP3 wg pierwszej kolumny
+    var sorted = chances.slice().sort(function(a,b){
+      return (b[cols[0]]||0) - (a[cols[0]]||0);
+    });
+
+    // Szansa na medal (TOP3) — trzecia kolumna numeryczna albo kolumna TOP3
+    var medalCol = cols.find(function(c){ return c==='TOP3'; }) || cols[2] || cols[0];
+
+    [0,1,2].forEach(function(rank){
+      var p = sorted[rank];
+      if(!p) return;
+      var name = p.Name;
+      if(!playerMap[name]){
+        playerMap[name] = {
+          name: name,
+          country: p.country || '—',
+          country_iso: p.country_iso || COUNTRY_ISO[p.country||''] || '',
+          gold: 0, silver: 0, bronze: 0, sigma: 0,
+          events: []
+        };
+      }
+      if(rank===0) playerMap[name].gold++;
+      if(rank===1) playerMap[name].silver++;
+      if(rank===2) playerMap[name].bronze++;
+      playerMap[name].events.push(ev.name);
+    });
+
+    // Sigma p(medal) dla wszystkich zawodników
+    chances.forEach(function(p){
+      var name = p.Name;
+      if(!playerMap[name]){
+        playerMap[name] = {
+          name: name,
+          country: p.country || '—',
+          country_iso: p.country_iso || COUNTRY_ISO[p.country||''] || '',
+          gold: 0, silver: 0, bronze: 0, sigma: 0,
+          events: []
+        };
+      }
+      playerMap[name].sigma += (p[medalCol] || 0);
+    });
+  });
+
+  // ── Buduj PLAYER_ROWS ──────────────────────────────
+  PLAYER_ROWS = Object.values(playerMap)
+    .filter(function(p){ return p.gold+p.silver+p.bronze > 0 || p.sigma > 0.01; })
+    .map(function(p){
+      p.total = p.gold + p.silver + p.bronze;
+      p.sigma = Math.round(p.sigma * 100) / 100;
+      return p;
+    })
+    .sort(function(a,b){
+      if(b.gold!==a.gold) return b.gold-a.gold;
+      if(b.silver!==a.silver) return b.silver-a.silver;
+      if(b.bronze!==a.bronze) return b.bronze-a.bronze;
+      return b.sigma-a.sigma;
+    });
+
+  // ── Agreguj do krajów ──────────────────────────────
+  var countryMap = {};
+  PLAYER_ROWS.forEach(function(p){
+    var c = p.country;
+    if(!countryMap[c]) countryMap[c] = {
+      country: c, country_iso: p.country_iso,
+      gold:0, silver:0, bronze:0, total:0, sigma:0
+    };
+    countryMap[c].gold   += p.gold;
+    countryMap[c].silver += p.silver;
+    countryMap[c].bronze += p.bronze;
+    countryMap[c].total  += p.total;
+    countryMap[c].sigma  += p.sigma;
+  });
+
+  COUNTRY_ROWS = Object.values(countryMap)
+    .map(function(c){ c.sigma=Math.round(c.sigma*100)/100; return c; })
+    .sort(function(a,b){
+      if(b.gold!==a.gold) return b.gold-a.gold;
+      if(b.silver!==a.silver) return b.silver-a.silver;
+      if(b.bronze!==a.bronze) return b.bronze-a.bronze;
+      return b.sigma-a.sigma;
+    });
+
+  var evNames = loaded.map(function(e){ return e.name; }).join(', ');
+  document.getElementById('medal-card-sub').textContent =
+    loaded.length + ' event' + (loaded.length>1?'y':'') + ': ' + evNames;
+
+  renderPlayers(PLAYER_ROWS);
+  renderCountries(COUNTRY_ROWS);
+}
+
+// ─── RENDER PLAYERS ───────────────────────────────────
+function renderPlayers(rows){
+  document.getElementById('players-body').innerHTML = rows.map(function(p, i){
+    var evTags = p.events.map(function(e){
+      return '<span class="ev-tag">'+e+'</span>';
+    }).join('');
+    return '<tr>'+
+      '<td><span class="mono">'+(i+1)+'</span></td>'+
+      '<td>'+getFlag(p.country, p.country_iso)+'<strong>'+p.name+'</strong></td>'+
+      '<td><span class="medal-dot gold-dot">'+p.gold+'</span></td>'+
+      '<td><span class="medal-dot silver-dot">'+p.silver+'</span></td>'+
+      '<td><span class="medal-dot bronze-dot">'+p.bronze+'</span></td>'+
+      '<td><span class="mono">'+p.total+'</span></td>'+
+      '<td><span class="sigma-val">'+p.sigma.toFixed(2)+'</span></td>'+
+      '<td>'+evTags+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+// ─── RENDER COUNTRIES ─────────────────────────────────
+function renderCountries(rows){
+  document.getElementById('countries-body').innerHTML = rows.map(function(c, i){
+    return '<tr>'+
+      '<td><span class="mono">'+(i+1)+'</span></td>'+
+      '<td>'+getFlag(c.country, c.country_iso)+'<strong>'+c.country+'</strong></td>'+
+      '<td><span class="medal-dot gold-dot">'+c.gold+'</span></td>'+
+      '<td><span class="medal-dot silver-dot">'+c.silver+'</span></td>'+
+      '<td><span class="medal-dot bronze-dot">'+c.bronze+'</span></td>'+
+      '<td><span class="mono">'+c.total+'</span></td>'+
+      '<td><span class="sigma-val">'+c.sigma.toFixed(2)+'</span></td>'+
+    '</tr>';
+  }).join('');
+}
+
+// ─── SORT ─────────────────────────────────────────────
+function mSort(tab, col){
+  if(mSortCol[tab]===col) mSortAsc[tab]=!mSortAsc[tab];
+  else{ mSortCol[tab]=col; mSortAsc[tab]= col==='name'||col==='country'; }
+  var asc = mSortAsc[tab];
+  var rows = tab==='players' ? PLAYER_ROWS.slice() : COUNTRY_ROWS.slice();
+  rows.sort(function(a,b){
+    var va = col==='rank' ? 0 : a[col];
+    var vb = col==='rank' ? 0 : b[col];
+    if(typeof va==='number') return asc ? va-vb : vb-va;
+    return asc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+  });
+  // Update th classes
+  var headId = tab==='players' ? '#players-body' : '#countries-body';
+  var thCols = tab==='players'
+    ? ['rank','name','gold','silver','bronze','total','sigma','events']
+    : ['rank','country','gold','silver','bronze','total','sigma'];
+  var tableHead = document.querySelector(tab==='players' ? '#m-players thead' : '#m-countries thead');
+  if(tableHead) tableHead.querySelectorAll('th').forEach(function(th,i){
+    th.classList.remove('sa','sd');
+    if(thCols[i]===col) th.classList.add(asc?'sa':'sd');
+  });
+  if(tab==='players') renderPlayers(rows);
+  else renderCountries(rows);
+}
+
+// ─── INIT ─────────────────────────────────────────────
 async function checkFile(id){
   try{
-    const r=await fetch(`${id}.json?v=${Date.now()}`,{method:'GET',cache:'no-cache'});
+    var r = await fetch(id+'.json?v='+Date.now(), {method:'GET', cache:'no-cache'});
     return r.ok;
   }catch(e){ return false; }
 }
 
 async function init(){
-  const grid=document.getElementById('events-grid');
-  // Check all files in parallel
-  const checks=await Promise.all(EVENTS.map(e=>checkFile(e.id)));
+  var grid = document.getElementById('events-grid');
+  var checks = await Promise.all(EVENTS.map(function(e){ return checkFile(e.id); }));
+  var availableIds = [];
 
-  EVENTS.forEach((ev,i)=>{
-    const ready=checks[i];
-    const card=document.createElement(ready?'a':'div');
-    if(ready) card.href=`dashboard2.html?event=${ev.id}`;
-    card.className='event-card'+(ready?'':' no-data');
+  EVENTS.forEach(function(ev, i){
+    var ready = checks[i];
+    if(ready) availableIds.push(ev.id);
+    var card = document.createElement(ready ? 'a' : 'div');
+    if(ready) card.href = 'dashboard.html?event='+ev.id;
+    card.className = 'event-card' + (ready ? '' : ' no-data');
     card.style.setProperty('--card-color', ev.color);
-    card.innerHTML=`
-      <div class="event-icon">${ev.icon}</div>
-      <div>
-        <div class="event-name">${ev.name}</div>
-        <div class="event-id">${ev.id}</div>
-      </div>
-      <div class="event-status ${ready?'ready':'soon'}">${ready?'Dane dostępne':'Brak danych'}</div>`;
+    card.innerHTML =
+      '<div class="event-icon">'+ev.icon+'</div>'+
+      '<div>'+
+        '<div class="event-name">'+ev.name+'</div>'+
+        '<div class="event-id">'+ev.id+'</div>'+
+      '</div>'+
+      '<div class="event-status '+(ready?'ready':'soon')+'">'+(ready?'Dane dostępne':'Brak danych')+'</div>';
     grid.appendChild(card);
   });
+
+  // Załaduj klasyfikację medalową ze wszystkich dostępnych eventów
+  await loadMedalStandings(availableIds);
 }
 
 init();
